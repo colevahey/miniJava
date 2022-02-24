@@ -153,15 +153,6 @@ public class Parser {
 		return pdl;
 	}
 	
-	/*
-	private void parseArgumentList() {
-		parseExpression();		// Expression
-		while (currentToken.tokenType.equals(TokenType.COMMA)) {
-			autoAccept();		// ,
-			parseExpression();	// Expression
-		}
-	}*/
-	
 	private Reference parseReference() {
 		switch (currentToken.tokenType) {
 		case IDENTIFIER:

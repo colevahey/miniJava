@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
+import miniJava.AbstractSyntaxTrees.ASTDisplay;
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
 
@@ -21,8 +22,9 @@ public class Compiler {
 		Parser parser = new Parser(scanner);
 		System.out.println("Syntactic Analysis ... ");
 		try {
-			parser.parse();
 			System.out.println("Valid miniJava Program");
+			ASTDisplay a = new ASTDisplay();
+			a.showTree(parser.parse());
 			System.exit(0);
 		} catch (SyntaxError e) {
 			System.out.println("Invalid miniJava Program");
