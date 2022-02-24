@@ -24,7 +24,6 @@ public class Parser {
 		currentToken = scanner.scan();						// currentToken++
 	}
 	
-	// DONE
 	private AST parseProgram() {
 		ClassDeclList c = new ClassDeclList();
 		while (currentToken.tokenType.equals(TokenType.CLASS)) {
@@ -34,7 +33,6 @@ public class Parser {
 		return p;
 	}
 	
-	// DONE
 	private ClassDecl parseClassDeclaration() {
 		autoAccept();													// class
 		String className = parseIdentifier().name;						// id
@@ -89,7 +87,6 @@ public class Parser {
 		return new ClassDecl(className, fdl, mdl, null);
 	}
 	
-	// DONE
 	private Boolean parseVisibility() {
 		if (currentToken.tokenType.equals(TokenType.PUBLIC) 
 				|| currentToken.tokenType.equals(TokenType.PRIVATE)) {
@@ -100,7 +97,6 @@ public class Parser {
 		return false;
 	}
 	
-	// DONE
 	private Boolean parseAccess() {
 		if (currentToken.tokenType.equals(TokenType.STATIC)) {
 			autoAccept();	// static
@@ -109,7 +105,6 @@ public class Parser {
 		return false;
 	}
 	
-	// DONE
 	private TypeDenoter parseType() {
 		switch (currentToken.tokenType) {
 		case INT:
@@ -140,7 +135,6 @@ public class Parser {
 		}
 	}
 	
-	// DONE
 	private ParameterDeclList parseParameterList() {
 		ParameterDeclList pdl = new ParameterDeclList();
 		TypeDenoter type = parseType();					// Type
@@ -159,16 +153,15 @@ public class Parser {
 		return pdl;
 	}
 	
-	// TODO
+	/*
 	private void parseArgumentList() {
 		parseExpression();		// Expression
 		while (currentToken.tokenType.equals(TokenType.COMMA)) {
 			autoAccept();		// ,
 			parseExpression();	// Expression
 		}
-	}
+	}*/
 	
-	// DONE
 	private Reference parseReference() {
 		switch (currentToken.tokenType) {
 		case IDENTIFIER:
@@ -203,7 +196,6 @@ public class Parser {
 		}
 	}
 
-	// DONE
 	private Statement parseStatement() {
 		switch (currentToken.tokenType) {
 		case LCBRACKET:
@@ -396,8 +388,89 @@ public class Parser {
 		}
 	}
 	
-	// TODO
 	private Expression parseExpression() {
+		Expression e = parseE();
+		return e;
+	}
+	
+	private Expression parseE() {
+		Expression e1 = parseD();
+		while (currentToken.name.equals("||")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseD();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseD() {
+		Expression e1 = parseC();
+		while (currentToken.name.equals("&&")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseC();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseC() {
+		Expression e1 = parseF();
+		while (currentToken.name.equals("==") || currentToken.name.equals("!=")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseF();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseF() {
+		Expression e1 = parseR();
+		while (currentToken.name.equals("<=") || currentToken.name.equals("<") ||
+				currentToken.name.equals(">=") || currentToken.name.equals(">")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseR();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseR() {
+		Expression e1 = parseA();
+		while (currentToken.name.equals("+") || currentToken.name.equals("-")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseA();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseA() {
+		Expression e1 = parseM();
+		while (currentToken.name.equals("*") || currentToken.name.equals("/")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			Expression e2 = parseM();
+			e1 = new BinaryExpr(op, e1, e2, null);
+		}
+		return e1;
+	}
+	
+	private Expression parseM() {
+		if (currentToken.name.equals("!") || currentToken.name.equals("-")) {
+			Operator op = new Operator(currentToken);
+			autoAccept();
+			return new UnaryExpr(op, parseM(), null);
+		} else {
+			return parseBaseExpression();
+		}
+	}
+	
+	private Expression parseBaseExpression() {
 		switch (currentToken.tokenType) {
 		case IDENTIFIER:
 		case THIS:
@@ -429,64 +502,50 @@ public class Parser {
 			default:
 				return new RefExpr(r, null);
 			}
-		
-		// TODO: USED STRATIFIED GRAMMAR TO CHEF DIS UP
-		case MINUS:
-		case UNOP:
-			parseUnop();						// unop
-			parseExpression();					// Expression
-			break;
 		case LPAREN:
 			autoAccept();						// (
-			parseExpression();					// Expression
+			Expression e = parseExpression();	// Expression
 			accept(TokenType.RPAREN);			// )
-			break;
+			return e;
 		case INTLITERAL:
-			parseIntLiteral();					// intlit
-			break;
+			IntLiteral i = parseIntLiteral();	// intlit
+			return new LiteralExpr(i, null);
 		case TRUE:
 		case FALSE:
-			autoAccept();						// true or false
-			break;
+			BooleanLiteral b = parseBoolLiteral();	// boollit
+			return new LiteralExpr(b, null);		// true or false
 		case NEW:
 			autoAccept();						// new
 			switch (currentToken.tokenType) {
 			case IDENTIFIER:
-				parseIdentifier();				// id
+				Identifier id = parseIdentifier();	// id
 				switch (currentToken.tokenType) {
 				case LPAREN:
 					autoAccept();				// (
 					accept(TokenType.RPAREN);	// )
-					break;
+					return new NewObjectExpr(new ClassType(id, null), null);
 				case LBRACKET:
 					autoAccept();				// [
-					parseExpression();			// Expression
+					e = parseExpression();		// Expression
 					accept(TokenType.RBRACKET);	// ]
-					break;
+					return new NewArrayExpr(new ClassType(id, null), e, null);
 				default:
 					throw new SyntaxError("Syntax Error: Invalid Declaration");
 				}
-				break;
 			case INT:
 				autoAccept();					// int
 				accept(TokenType.LBRACKET);		// [
-				parseExpression();				// Expression
+				e = parseExpression();			// Expression
 				accept(TokenType.RBRACKET);		// ]
-				break;
+				return new NewArrayExpr(new BaseType(TypeKind.INT, null), e, null);
 			default:
 				throw new SyntaxError("Syntax Error: Invalid Declaration");
 			}
-			break;
 		default:
 			throw new SyntaxError("Syntax Error: Invalid Expression");
 		}
-		if (currentToken.tokenType.equals(TokenType.BINOP) || currentToken.tokenType.equals(TokenType.MINUS)) {
-			parseBinop();						// binop
-			parseExpression();					// Expression
-		}
 	}
 	
-	// DONE
 	private Identifier parseIdentifier() {
 		if (currentToken.tokenType.equals(TokenType.IDENTIFIER)) {
 			Identifier id = new Identifier(currentToken);
@@ -497,7 +556,6 @@ public class Parser {
 		}
 	}
 	
-	// DONE
 	private IntLiteral parseIntLiteral() {
 		if (currentToken.tokenType.equals(TokenType.INTLITERAL)) {
 			IntLiteral i = new IntLiteral(currentToken);
@@ -508,7 +566,6 @@ public class Parser {
 		}
 	}
 	
-	// DONE
 	private BooleanLiteral parseBoolLiteral() {
 		if (currentToken.tokenType.equals(TokenType.TRUE)) {
 			BooleanLiteral b = new BooleanLiteral(currentToken);
@@ -524,34 +581,12 @@ public class Parser {
 		}
 	}
 	
-	// TODO
-	private void parseUnop() {
-		if (currentToken.tokenType.equals(TokenType.UNOP)
-				|| currentToken.tokenType.equals(TokenType.MINUS)) {
-			currentToken = scanner.scan();	// currentToken++
-		} else {
-			throw new SyntaxError("Syntax Error: Invalid Unary Operator");
-		}
-	}
-	
-	// TODO
-	private void parseBinop() {
-		if (currentToken.tokenType.equals(TokenType.BINOP)
-				|| currentToken.tokenType.equals(TokenType.MINUS)) {
-			currentToken = scanner.scan();	// currentToken++
-		} else {
-			throw new SyntaxError("Syntax Error: Invalid Binary Operator");
-		}
-	}
-	
-	// TODO
-	public void parse() {
+	public AST parse() {
 		currentToken = scanner.scan();
-		parseProgram();
+		AST p = parseProgram();
 		if (!currentToken.tokenType.equals(TokenType.EOT)) {
 			throw new SyntaxError("Syntax Error: Expected EOT");
 		}
+		return p;
 	}
-	
-	// TODO PARSE BOOL
 }
