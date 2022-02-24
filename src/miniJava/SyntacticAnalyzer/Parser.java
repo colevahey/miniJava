@@ -488,7 +488,6 @@ public class Parser {
 					accept(TokenType.RPAREN);		// )
 					break;
 				}
-				accept(TokenType.SEMICOLON);		// ;
 				return new CallExpr(r, eL, null);
 			default:
 				return new RefExpr(r, null);
