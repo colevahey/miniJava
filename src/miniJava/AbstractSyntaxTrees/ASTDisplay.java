@@ -346,22 +346,22 @@ public class ASTDisplay implements Visitor<String,Object> {
 	///////////////////////////////////////////////////////////////////////////////
     
     public Object visitIdentifier(Identifier id, String arg){
-        show(arg, quote(id.spelling) + " " + id.toString());
+        show(arg, quote(id.name) + " " + id.toString());
         return null;
     }
     
     public Object visitOperator(Operator op, String arg){
-        show(arg, quote(op.spelling) + " " + op.toString());
+        show(arg, quote(op.name) + " " + op.toString());
         return null;
     }
     
     public Object visitIntLiteral(IntLiteral num, String arg){
-        show(arg, quote(num.spelling) + " " + num.toString());
+        show(arg, quote(num.name) + " " + num.toString());
         return null;
     }
     
     public Object visitBooleanLiteral(BooleanLiteral bool, String arg){
-        show(arg, quote(bool.spelling) + " " + bool.toString());
+        show(arg, quote(bool.name) + " " + bool.toString());
         return null;
     }
 }

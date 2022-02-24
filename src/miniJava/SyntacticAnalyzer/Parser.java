@@ -1,6 +1,8 @@
 package miniJava.SyntacticAnalyzer;
 
 import miniJava.SyntaxError;
+import miniJava.AbstractSyntaxTrees.*;
+import miniJava.AbstractSyntaxTrees.Package;
 
 public class Parser {
 	private Token currentToken;
@@ -22,100 +24,142 @@ public class Parser {
 		currentToken = scanner.scan();						// currentToken++
 	}
 	
-	private void parseProgram() {
+	// DONE
+	private AST parseProgram() {
+		ClassDeclList c = new ClassDeclList();
 		while (currentToken.tokenType.equals(TokenType.CLASS)) {
-			parseClassDeclaration();
+			c.add(parseClassDeclaration());
 		}
+		Package p = new Package(c, null);
+		return p;
 	}
 	
-	private void parseClassDeclaration() {
+	// DONE
+	private ClassDecl parseClassDeclaration() {
 		autoAccept();													// class
-		parseIdentifier();												// id
+		String className = parseIdentifier().name;						// id
+		FieldDeclList fdl = new FieldDeclList();
+		MethodDeclList mdl = new MethodDeclList();
+		
 		accept(TokenType.LCBRACKET);									// {
 		while (!currentToken.tokenType.equals(TokenType.RCBRACKET)) {
-			parseVisibility();											// Visibility
-			parseAccess();												// Access
+			Boolean isPrivate = parseVisibility();						// Visibility
+			Boolean isStatic = parseAccess();							// Access
+			String memberName;
+			TypeDenoter type;
 			if (currentToken.tokenType.equals(TokenType.VOID)) {
 				autoAccept();											// void
-				parseIdentifier();										// id
+				type = new BaseType(TypeKind.VOID, null);
+				memberName = parseIdentifier().name;						// id
 			} else {
-				parseType();											// Type
-				parseIdentifier();										// id
+				type = parseType();									// Type
+				memberName = parseIdentifier().name;							// id
 				if (currentToken.tokenType.equals(TokenType.SEMICOLON)) {
 					autoAccept();										// ;
+					fdl.add(new FieldDecl(isPrivate, isStatic, type, memberName, null));
 					continue;											// END OF FIELD DECLARATION
 				}
 			}
 			switch (currentToken.tokenType) {
 			case LPAREN:
 				autoAccept();											// ( -> METHOD DECLARATION
+				ParameterDeclList pdl = new ParameterDeclList();
 				switch (currentToken.tokenType) {
 				case RPAREN:
 					autoAccept();										// )
 					break;
 				default:
-					parseParameterList();								// ParameterList?
+					pdl = parseParameterList();							// ParameterList?
 					accept(TokenType.RPAREN);							// )
 					break;
 				}
 				accept(TokenType.LCBRACKET);							// {
+				StatementList sl = new StatementList();
 				while (!currentToken.tokenType.equals(TokenType.RCBRACKET)) {
-					parseStatement();									// Statement*
+					sl.add(parseStatement());							// Statement*
 				}
 				autoAccept();											// }
+				mdl.add(new MethodDecl(new FieldDecl(isPrivate, isStatic, type, memberName, null), pdl, sl, null));
 				break;
 			default:
 				throw new SyntaxError("Syntax Error: Method or Field Declaration Expected");
 			}
 		}
 		accept(TokenType.RCBRACKET);									// }
+		return new ClassDecl(className, fdl, mdl, null);
 	}
 	
-	private void parseVisibility() {
+	// DONE
+	private Boolean parseVisibility() {
 		if (currentToken.tokenType.equals(TokenType.PUBLIC) 
 				|| currentToken.tokenType.equals(TokenType.PRIVATE)) {
+			Boolean isPrivate = currentToken.tokenType.equals(TokenType.PRIVATE) ? true : false;
 			autoAccept();	// public or private
+			return isPrivate;
 		}
+		return false;
 	}
 	
-	private void parseAccess() {
+	// DONE
+	private Boolean parseAccess() {
 		if (currentToken.tokenType.equals(TokenType.STATIC)) {
 			autoAccept();	// static
+			return true;
 		}
+		return false;
 	}
 	
-	private void parseType() {
+	// DONE
+	private TypeDenoter parseType() {
 		switch (currentToken.tokenType) {
 		case INT:
+			autoAccept();						// int
+			switch (currentToken.tokenType) {
+			case LBRACKET:
+				autoAccept();
+				accept(TokenType.RBRACKET);
+				return new ArrayType(new BaseType(TypeKind.INT, null), null);
+			default:
+				return new BaseType(TypeKind.INT, null);
+			}
 		case IDENTIFIER:
-			autoAccept();						// int or id
+			Identifier i = parseIdentifier();
 			switch (currentToken.tokenType) {
 			case LBRACKET:
 				autoAccept();					// [
 				accept(TokenType.RBRACKET);		// ]
-				break;
+				return new ArrayType(new ClassType(i, null), null);
 			default:
-				break;
+				return new ClassType(i, null);
 			}
-			break;
 		case BOOLEAN:
 			autoAccept();						// boolean
-			break;
+			return new BaseType(TypeKind.BOOLEAN, null);
 		default:
 			throw new SyntaxError("Syntax Error: Invalid Type");
 		}
 	}
 	
-	private void parseParameterList() {
-		parseType();			// Type
-		parseIdentifier();		// id
+	// DONE
+	private ParameterDeclList parseParameterList() {
+		ParameterDeclList pdl = new ParameterDeclList();
+		TypeDenoter type = parseType();					// Type
+		String paramName = parseIdentifier().name;		// id
+		ParameterDecl pd = new ParameterDecl(type, paramName, null);
+		pdl.add(pd);
+		
 		while (currentToken.tokenType.equals(TokenType.COMMA)) {
-			autoAccept();		// ,
-			parseType();		// Type
-			parseIdentifier();	// id
+			autoAccept();						// ,
+			TypeDenoter t = parseType();		// Type
+			String pN = parseIdentifier().name;	// id
+			ParameterDecl pD = new ParameterDecl(t, pN, null);
+			pdl.add(pD);
 		}
+		
+		return pdl;
 	}
 	
+	// TODO
 	private void parseArgumentList() {
 		parseExpression();		// Expression
 		while (currentToken.tokenType.equals(TokenType.COMMA)) {
@@ -124,225 +168,269 @@ public class Parser {
 		}
 	}
 	
-	private void parseReference() {
+	// DONE
+	private Reference parseReference() {
 		switch (currentToken.tokenType) {
 		case IDENTIFIER:
-			parseIdentifier();		// id
-			break;
+			IdRef iR = new IdRef(parseIdentifier(), null); 				// id
+			if (currentToken.tokenType.equals(TokenType.DOT)) {
+				autoAccept();											// .
+				QualRef q = new QualRef(iR, parseIdentifier(), null); 	// id
+				while (currentToken.tokenType.equals(TokenType.DOT)) {
+					autoAccept();										// .
+					q = new QualRef(q, parseIdentifier(), null); 		// id
+				}
+				return q;
+			} else {
+				return iR;
+			}
 		case THIS:
-			autoAccept();			// this
-			break;
+			autoAccept();						// this
+			ThisRef tR = new ThisRef(null);
+			if (currentToken.tokenType.equals(TokenType.DOT)) {
+				autoAccept();											// .
+				QualRef q = new QualRef(tR, parseIdentifier(), null); 	// id
+				while (currentToken.tokenType.equals(TokenType.DOT)) {
+					autoAccept();										// .
+					q = new QualRef(q, parseIdentifier(), null); 		// id
+				}
+				return q;
+			} else {
+				return tR;
+			}
 		default:
 			throw new SyntaxError("Syntax Error");
 		}
-		while (currentToken.tokenType.equals(TokenType.DOT)) {
-			autoAccept();			// .
-			parseIdentifier();		// id
-		}
 	}
 
-	private void parseStatement() {
+	// DONE
+	private Statement parseStatement() {
 		switch (currentToken.tokenType) {
 		case LCBRACKET:
 			autoAccept();						// {
+			StatementList sl = new StatementList();
 			while (!currentToken.tokenType.equals(TokenType.RCBRACKET)) {
-				parseStatement();				// Statement*
+				sl.add(parseStatement());		// Statement*
 			}
 			autoAccept();						// }
-			break;
+			return new BlockStmt(sl, new SourcePosition(0,0));
 		case INT:
 		case BOOLEAN:
-			parseType();						// Type
-			parseIdentifier();					// id
-			accept(TokenType.ASSIGNMENT);		// =
-			parseExpression();					// Expression
-			accept(TokenType.SEMICOLON);		// ;
-			break;
+			TypeDenoter tD = parseType();			// Type
+			String idName = parseIdentifier().name;	// id
+			accept(TokenType.ASSIGNMENT);			// =
+			Expression e = parseExpression();		// Expression
+			accept(TokenType.SEMICOLON);			// ;
+			return new VarDeclStmt(new VarDecl(tD, idName, null), e, null);
 		case IDENTIFIER:
-			parseIdentifier();					// id
+			Identifier id = parseIdentifier();	// id
 			switch (currentToken.tokenType) {
 			case IDENTIFIER:
-				parseIdentifier();				// id
-				accept(TokenType.ASSIGNMENT);	// =
-				parseExpression();				// Expression
-				accept(TokenType.SEMICOLON);	// ;
-				break;
+				tD = new ClassType(id, null);				// Type
+				idName = parseIdentifier().name;			// id
+				accept(TokenType.ASSIGNMENT);				// =
+				e = parseExpression();						// Expression
+				accept(TokenType.SEMICOLON);				// ;
+				return new VarDeclStmt(new VarDecl(tD, idName, null), e, null);
 			case LBRACKET:
-				autoAccept();						// [
+				autoAccept();								// [
 				switch (currentToken.tokenType) {
 				case RBRACKET:
-					autoAccept();					// ]
-					parseIdentifier();				// id
-					accept(TokenType.ASSIGNMENT);	// =
-					parseExpression();				// Expression
-					accept(TokenType.SEMICOLON);	// ;
-					break;
+					autoAccept();							// ]
+					tD = new ArrayType(new ClassType(id, null), null); // ArrayType
+					idName = parseIdentifier().name;		// id
+					accept(TokenType.ASSIGNMENT);			// =
+					e = parseExpression();					// Expression
+					accept(TokenType.SEMICOLON);			// ;
+					return new VarDeclStmt(new VarDecl(tD, idName, null), e, null);
 				default:
-					parseExpression();				// Expression
-					accept(TokenType.RBRACKET);		// ]
-					accept(TokenType.ASSIGNMENT);	// =
-					parseExpression();				// Expression
-					accept(TokenType.SEMICOLON);	// ;
-					break;
+					IdRef iDR = new IdRef(id, null);
+					Expression eOuter = parseExpression();	// Expression
+					accept(TokenType.RBRACKET);				// ]
+					accept(TokenType.ASSIGNMENT);			// =
+					e = parseExpression();					// Expression
+					accept(TokenType.SEMICOLON);			// ;
+					return new IxAssignStmt(iDR, eOuter, e, null);
 				}
-				break;
 			case ASSIGNMENT:
 				autoAccept();					// =
-				parseExpression();				// Expression
+				e = parseExpression();			// Expression
 				accept(TokenType.SEMICOLON);	// ;
-				break;
+				return new AssignStmt(new IdRef(id, null), e, null);
 			case LPAREN:
+				IdRef iDR = new IdRef(id, null);
+				ExprList eL = new ExprList();
 				autoAccept();					// (
 				switch (currentToken.tokenType) {
 				case RPAREN:
 					autoAccept();				// )
 					break;
 				default:
-					parseArgumentList();		// ArgumentList?
+					eL.add(parseExpression());		// Expression
+					while (currentToken.tokenType.equals(TokenType.COMMA)) {
+						autoAccept();		// ,
+						eL.add(parseExpression());	// Expression
+					}
 					accept(TokenType.RPAREN);	// )
 					break;
 				}
 				accept(TokenType.SEMICOLON);	// ;
-				break;
+				return new CallStmt(iDR, eL, null);
 			case DOT:
+				autoAccept();											// .
+				iDR = new IdRef(id, null);
+				QualRef q = new QualRef(iDR, parseIdentifier(), null); 	// id
 				while (currentToken.tokenType.equals(TokenType.DOT)) {
-					autoAccept();					// DOT
-					parseIdentifier();				// id
+					autoAccept();										// .
+					q = new QualRef(q, parseIdentifier(), null); 		// id
 				}
 				switch (currentToken.tokenType) {
 				case LBRACKET:
-					autoAccept();					// [
-					parseExpression();				// Expression
-					accept(TokenType.RBRACKET);		// ]
-					accept(TokenType.ASSIGNMENT);	// =
-					parseExpression();				// Expression
-					accept(TokenType.SEMICOLON);	// ;
-					break;
+					autoAccept();							// [
+					Expression eOuter = parseExpression();	// Expression
+					accept(TokenType.RBRACKET);				// ]
+					accept(TokenType.ASSIGNMENT);			// =
+					e = parseExpression();					// Expression
+					accept(TokenType.SEMICOLON);			// ;
+					return new IxAssignStmt(q, eOuter, e, null);
 				case ASSIGNMENT:
 					autoAccept();					// =
-					parseExpression();				// Expression
+					e = parseExpression();				// Expression
 					accept(TokenType.SEMICOLON);	// ;
-					break;
+					return new AssignStmt(q, e, null);
 				case LPAREN:
+					eL = new ExprList();
 					autoAccept();					// (
 					switch (currentToken.tokenType) {
 					case RPAREN:
 						autoAccept();				// )
 						break;
 					default:
-						parseArgumentList();		// ArgumentList?
+						eL.add(parseExpression());		// Expression
+						while (currentToken.tokenType.equals(TokenType.COMMA)) {
+							autoAccept();		// ,
+							eL.add(parseExpression());	// Expression
+						}
 						accept(TokenType.RPAREN);	// )
 						break;
 					}
 					accept(TokenType.SEMICOLON);	// ;
-					break;
+					return new CallStmt(q, eL, null);
 				default:
 					throw new SyntaxError("Syntax Error");
 				}
-				break;
 			default:
 				throw new SyntaxError("Syntax Error");
 			}
-			break;
 		case THIS:
-			parseReference();
+			Reference r = parseReference();
 			switch (currentToken.tokenType) {
 			case ASSIGNMENT:
 				autoAccept();					// =
-				parseExpression();				// Expression
+				e = parseExpression();			// Expression
 				accept(TokenType.SEMICOLON);	// ;
-				break;
+				return new AssignStmt(r, e, null);
 			case LBRACKET:
-				autoAccept();					// [
-				parseExpression();				// Expression
-				accept(TokenType.RBRACKET);		// ]
-				accept(TokenType.ASSIGNMENT);	// =
-				parseExpression();				// Expression
-				accept(TokenType.SEMICOLON);	// ;
-				break;
+				autoAccept();							// [
+				Expression eOuter = parseExpression();	// Expression
+				accept(TokenType.RBRACKET);				// ]
+				accept(TokenType.ASSIGNMENT);			// =
+				e = parseExpression();					// Expression
+				accept(TokenType.SEMICOLON);			// ;
+				return new IxAssignStmt(r, eOuter, e, null);
 			case LPAREN:
+				ExprList eL = new ExprList();
 				autoAccept();					// (
 				switch (currentToken.tokenType) {
 				case RPAREN:
 					autoAccept();				// )
 					break;
 				default:
-					parseArgumentList();		// ArgumentList()
-					accept(TokenType.RPAREN);	// )
+					eL.add(parseExpression());		// Expression
+					while (currentToken.tokenType.equals(TokenType.COMMA)) {
+						autoAccept();		// ,
+						eL.add(parseExpression());	// Expression
+					}
+					accept(TokenType.RPAREN);		// )
 					break;
 				}
-				accept(TokenType.SEMICOLON);	// ;
-				break;
+				accept(TokenType.SEMICOLON);		// ;
+				return new CallStmt(r, eL, null);
 			default:
 				throw new SyntaxError("SyntaxError");
 			}
-			break;
 		case RETURN:
-			autoAccept();						// return
+			autoAccept();							// return
 			switch (currentToken.tokenType) {
 			case SEMICOLON:
-				autoAccept();					// ;
-				break;
+				autoAccept();						// ;
+				return new ReturnStmt(null, null);
 			default:
-				parseExpression();				// Expression
-				accept(TokenType.SEMICOLON);	// ;
-				break;
+				e = parseExpression();				// Expression
+				accept(TokenType.SEMICOLON);		// ;
+				return new ReturnStmt(e, null);
 			}
-			break;
 		case IF:
-			autoAccept();						// if
-			accept(TokenType.LPAREN);			// (
-			parseExpression();					// Expression
-			accept(TokenType.RPAREN);			// )
-			parseStatement();					// Statement
+			autoAccept();							// if
+			accept(TokenType.LPAREN);				// (
+			e = parseExpression();					// Expression
+			accept(TokenType.RPAREN);				// )
+			Statement s = parseStatement();			// Statement
 			switch (currentToken.tokenType) {
 			case ELSE:
-				autoAccept();					// else
-				parseStatement();				// Statement
-				break;
+				autoAccept();						// else
+				Statement eS = parseStatement();	// Statement
+				return new IfStmt(e, s, eS, null);	// IfStmt with an else
 			default:
-				break;							// NO ELSE
+				return new IfStmt(e, s, null);		// No else
 			}
-			break;
 		case WHILE:
-			autoAccept();						// while
-			accept(TokenType.LPAREN);			// (
-			parseExpression();					// Expression
-			accept(TokenType.RPAREN);			// )
-			parseStatement();					// Statement
-			break;
+			autoAccept();							// while
+			accept(TokenType.LPAREN);				// (
+			e = parseExpression();					// Expression
+			accept(TokenType.RPAREN);				// )
+			s = parseStatement();					// Statement
+			return new WhileStmt(e, s, null);
 		default:
 			throw new SyntaxError("Syntax Error");
 		}
 	}
 	
-	private void parseExpression() {
+	// TODO
+	private Expression parseExpression() {
 		switch (currentToken.tokenType) {
 		case IDENTIFIER:
 		case THIS:
-			parseReference();
+			Reference r = parseReference();
 			switch (currentToken.tokenType) {
 			case LBRACKET:
-				autoAccept();					// [
-				parseExpression();				// Expression
-				accept(TokenType.RBRACKET);		// ]
-				break;
+				autoAccept();							// [
+				Expression e = parseExpression();		// Expression
+				accept(TokenType.RBRACKET);				// ]
+				return new IxExpr(r, e, null);
 			case LPAREN:
+				ExprList eL = new ExprList();
 				autoAccept();					// (
 				switch (currentToken.tokenType) {
 				case RPAREN:
 					autoAccept();				// )
 					break;
 				default:
-					parseArgumentList();		// ArgumentList?
-					accept(TokenType.RPAREN);	// )
+					eL.add(parseExpression());		// Expression
+					while (currentToken.tokenType.equals(TokenType.COMMA)) {
+						autoAccept();				// ,
+						eL.add(parseExpression());	// Expression
+					}
+					accept(TokenType.RPAREN);		// )
 					break;
 				}
-				break;
+				accept(TokenType.SEMICOLON);		// ;
+				return new CallExpr(r, eL, null);
 			default:
-				break;
+				return new RefExpr(r, null);
 			}
-			break;
+		
+		// TODO: USED STRATIFIED GRAMMAR TO CHEF DIS UP
 		case MINUS:
 		case UNOP:
 			parseUnop();						// unop
@@ -398,22 +486,45 @@ public class Parser {
 		}
 	}
 	
-	private void parseIdentifier() {
+	// DONE
+	private Identifier parseIdentifier() {
 		if (currentToken.tokenType.equals(TokenType.IDENTIFIER)) {
+			Identifier id = new Identifier(currentToken);
 			currentToken = scanner.scan();	// currentToken++
+			return id;
 		} else {
 			throw new SyntaxError("Syntax Error: Invalid Identifier");
 		}
 	}
 	
-	private void parseIntLiteral() {
+	// DONE
+	private IntLiteral parseIntLiteral() {
 		if (currentToken.tokenType.equals(TokenType.INTLITERAL)) {
+			IntLiteral i = new IntLiteral(currentToken);
 			currentToken = scanner.scan();	// currentToken++
+			return i;
 		} else {
 			throw new SyntaxError("Syntax Error: Invalid Integer Literal");
 		}
 	}
 	
+	// DONE
+	private BooleanLiteral parseBoolLiteral() {
+		if (currentToken.tokenType.equals(TokenType.TRUE)) {
+			BooleanLiteral b = new BooleanLiteral(currentToken);
+			currentToken = scanner.scan();	// currentToken++
+			return b;
+		} else if (currentToken.tokenType.equals(TokenType.FALSE)) {
+			BooleanLiteral b = new BooleanLiteral(currentToken);
+			currentToken = scanner.scan();
+			return b;
+		}
+		else {
+			throw new SyntaxError("Syntax Error: Invalid Integer Literal");
+		}
+	}
+	
+	// TODO
 	private void parseUnop() {
 		if (currentToken.tokenType.equals(TokenType.UNOP)
 				|| currentToken.tokenType.equals(TokenType.MINUS)) {
@@ -423,6 +534,7 @@ public class Parser {
 		}
 	}
 	
+	// TODO
 	private void parseBinop() {
 		if (currentToken.tokenType.equals(TokenType.BINOP)
 				|| currentToken.tokenType.equals(TokenType.MINUS)) {
@@ -432,6 +544,7 @@ public class Parser {
 		}
 	}
 	
+	// TODO
 	public void parse() {
 		currentToken = scanner.scan();
 		parseProgram();
@@ -439,4 +552,6 @@ public class Parser {
 			throw new SyntaxError("Syntax Error: Expected EOT");
 		}
 	}
+	
+	// TODO PARSE BOOL
 }

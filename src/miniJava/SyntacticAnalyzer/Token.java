@@ -3,6 +3,7 @@ package miniJava.SyntacticAnalyzer;
 public class Token {
 	public TokenType tokenType;
 	public String name;
+	public SourcePosition posn;
 	public Token (TokenType tokenType, String name) {
 		this.tokenType = tokenType;
 		this.name = name;

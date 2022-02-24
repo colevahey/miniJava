@@ -6,16 +6,16 @@
 package miniJava.AbstractSyntaxTrees;
 
 import miniJava.SyntacticAnalyzer.Token;
-import miniJava.SyntacticAnalyzer.TokenKind;
+import miniJava.SyntacticAnalyzer.TokenType;
 
 abstract public class Terminal extends AST {
 
   public Terminal (Token t) {
 	super(t.posn);
-    spelling = t.spelling;
-    kind = t.kind;
+    name = t.name;
+    tokenType = t.tokenType;
   }
 
-  public TokenKind kind;
-  public String spelling;
+  public TokenType tokenType;
+  public String name;
 }
