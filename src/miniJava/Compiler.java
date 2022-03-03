@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
-import miniJava.AbstractSyntaxTrees.AST;
 import miniJava.AbstractSyntaxTrees.ASTDisplay;
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
@@ -21,18 +20,15 @@ public class Compiler {
 		
 		Scanner scanner = new Scanner(inputStream);
 		Parser parser = new Parser(scanner);
-		System.out.println("Syntactic analysis ... ");
-
+		System.out.println("Syntactic Analysis ... ");
 		try {
-			AST ast = parser.parse();
-			System.out.print("Syntactic analysis complete:  ");
-			System.out.println("Valid miniJava Program:");
-			new ASTDisplay().showTree(ast);
+			System.out.println("Valid miniJava Program");
+			ASTDisplay a = new ASTDisplay();
+			a.showTree(parser.parse());
 			System.exit(0);
 		} catch (SyntaxError e) {
-			System.out.print("Syntactic analysis complete:  ");
 			System.out.println("Invalid miniJava Program");
-			// e.status();
+			e.status();
 			// e.printStackTrace();
 			System.exit(4);
 		}
