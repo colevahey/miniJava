@@ -45,6 +45,7 @@ public interface Visitor<ArgType,ResultType> {
     public ResultType visitLiteralExpr(LiteralExpr expr, ArgType arg);
     public ResultType visitNewObjectExpr(NewObjectExpr expr, ArgType arg);
     public ResultType visitNewArrayExpr(NewArrayExpr expr, ArgType arg);
+    public ResultType visitNullLiteralExpr(NullLiteralExpr expr, ArgType arg);
     
   // References
     public ResultType visitThisRef(ThisRef ref, ArgType arg);

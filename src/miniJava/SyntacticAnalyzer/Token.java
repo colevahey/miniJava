@@ -18,7 +18,7 @@ public class Token {
 	
 	private final static String[] spellings = {
 		"<identifier>", "<integer-literal>", "<unop>", "<binop>",
-		"int", "boolean", "class", "void", "public", "private",
+		"int", "boolean", "class", "void", "null", "public", "private",
 		"static", "this", "return", "if", "else", "while", "new",
 		"true", "false", "-", "=", ";", ",", ".", "(", ")", "[", "]", "{", "}",
 		"<eot>"

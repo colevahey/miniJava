@@ -313,6 +313,11 @@ public class ASTDisplay implements Visitor<String,Object> {
         return null;
     }
     
+    public Object visitNullLiteralExpr(NullLiteralExpr expr, String arg){
+        show(arg, "NULL " + expr.toString());
+        return null;
+    }
+    
 
 	///////////////////////////////////////////////////////////////////////////////
 	//

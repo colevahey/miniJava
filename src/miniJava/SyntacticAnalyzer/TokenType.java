@@ -9,6 +9,7 @@ public enum TokenType {
 	BOOLEAN,
 	CLASS,
 	VOID,
+	NULL,
 	PUBLIC,
 	PRIVATE,
 	STATIC,

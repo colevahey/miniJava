@@ -531,6 +531,9 @@ public class Parser {
 			default:
 				throw new SyntaxError("Syntax Error: Invalid Declaration");
 			}
+		case NULL:
+			autoAccept();						// null
+			return new NullLiteralExpr(null);
 		default:
 			throw new SyntaxError("Syntax Error: Invalid Expression");
 		}
