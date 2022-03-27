@@ -4,7 +4,7 @@ public class Token {
 	public TokenType tokenType;
 	public String name;
 	public SourcePosition posn;
-	public Token (TokenType tokenType, String name) {
+	public Token (TokenType tokenType, String name, int line) {
 		this.tokenType = tokenType;
 		this.name = name;
 		if (tokenType == TokenType.IDENTIFIER) {
@@ -14,6 +14,7 @@ public class Token {
 				}
 			}
 		}
+		this.posn = new SourcePosition(line, 0);
 	}
 	
 	private final static String[] spellings = {

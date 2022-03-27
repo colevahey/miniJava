@@ -9,9 +9,11 @@ public class Scanner {
 	private InputStream inputStream;
 	private char currentChar;						// FIRST SOURCE CHARACTER
 	private TokenType currentTokenType;
+	private int currentLine;
 	private StringBuffer currentName = new StringBuffer("");
 	
 	public Scanner(InputStream inputStream) {
+		this.currentLine = 1;
 		this.inputStream = inputStream;
 		getChar();
 	}
@@ -138,8 +140,10 @@ public class Scanner {
 			}
 			if (currentChar == '\n') {							// If a newline
 				takeIt();
+				currentLine++;
 			} else if (currentChar == '\r') {					// If just a carriage return
 				takeIt();
+				currentLine++;
 			}
 			break;
 		case '*':												// Following a /
@@ -158,10 +162,11 @@ public class Scanner {
 				}
 			}
 			break;
-		case ' ':
 		case '\n':
-		case '\t':
 		case '\r':
+			currentLine++;
+		case ' ':
+		case '\t':
 			takeIt();
 			break;
 		}
@@ -184,6 +189,6 @@ public class Scanner {
 			currentName = new StringBuffer("");
 			currentTokenType = scanToken();
 		}
-		return new Token(currentTokenType, currentName.toString());
+		return new Token(currentTokenType, currentName.toString(), currentLine);
 	}
 }
