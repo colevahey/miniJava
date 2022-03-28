@@ -189,6 +189,6 @@ public class Scanner {
 			currentName = new StringBuffer("");
 			currentTokenType = scanToken();
 		}
-		return new Token(currentTokenType, currentName.toString(), currentLine);
+		return new Token(currentTokenType, currentName.toString(), new SourcePosition(currentLine, 0));
 	}
 }

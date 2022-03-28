@@ -8,9 +8,8 @@ package miniJava.AbstractSyntaxTrees;
 import  miniJava.SyntacticAnalyzer.SourcePosition;
 
 public abstract class Expression extends AST {
-
+  public TypeKind type;
   public Expression(SourcePosition posn) {
     super (posn);
   }
-  
 }

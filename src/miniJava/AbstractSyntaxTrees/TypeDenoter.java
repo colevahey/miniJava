@@ -8,7 +8,7 @@ package miniJava.AbstractSyntaxTrees;
 import miniJava.SyntacticAnalyzer.SourcePosition;
 
 abstract public class TypeDenoter extends AST {
-    
+    public TypeKind type;
     public TypeDenoter(TypeKind type, SourcePosition posn){
         super(posn);
         typeKind = type;
