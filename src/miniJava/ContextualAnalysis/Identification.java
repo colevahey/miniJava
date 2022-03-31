@@ -7,15 +7,20 @@ import miniJava.SyntacticAnalyzer.TokenType;
 
 public class Identification implements Visitor<Object, Object> {
 	public IDTable table;
+	private Package ast;
+	private ClassDecl currentClass;
+	private boolean currentStatic;
+	private boolean baseLevel;
+	
 	public Identification(Package ast) {
 		table = new IDTable();
-		ast.visit(this, null);
+		this.ast = ast;
+		this.currentStatic = false;
+		this.baseLevel = false;
+		this.ast.visit(this, null);
+		new TypeChecking(this.ast);
 	}
 	
-	
-	// Program
-	
-	// **DONE**
 	public Object visitPackage(Package prog, Object arg) {
 		table.openScope();
 		FieldDeclList fdl = new FieldDeclList();
@@ -57,13 +62,13 @@ public class Identification implements Visitor<Object, Object> {
 			table.enter(cd.name, cd);
 		}
 		for (ClassDecl cd: prog.classDeclList) {
+			currentClass = cd;
 			cd.visit(this, null);
 		}
 		table.closeScope();
 		return null;
 	}
 	
-	//**DONE**
 	public Object visitClassDecl(ClassDecl cd, Object arg) {
 		table.openScope();
 		for (FieldDecl fd: cd.fieldDeclList) {
@@ -74,9 +79,11 @@ public class Identification implements Visitor<Object, Object> {
 		}
 		
 		for (FieldDecl fd: cd.fieldDeclList) {
+			currentStatic = fd.isStatic;
 			fd.visit(this, null);
 		}
 		for (MethodDecl md: cd.methodDeclList) {
+			currentStatic = md.isStatic;
 			md.visit(this, null);
 		}
 		table.closeScope();
@@ -84,13 +91,11 @@ public class Identification implements Visitor<Object, Object> {
 		return null;
 	}
 	
-	// **DONE**
 	public Object visitFieldDecl(FieldDecl fd, Object arg) {
 		fd.type.visit(this, null);
 		return null;
 	}
 	
-	// **DONE**
 	public Object visitMethodDecl(MethodDecl md, Object arg) {
 		md.type.visit(this, null);
 		
@@ -109,49 +114,35 @@ public class Identification implements Visitor<Object, Object> {
 		return null;
 	}
 
-	// **DONE**
 	public Object visitParameterDecl(ParameterDecl pd, Object arg) {
 		pd.type.visit(this, null);
 		table.enter(pd.name, pd);
 		return null;
 	}
 
-	// **DONE**
 	public Object visitVarDecl(VarDecl decl, Object arg) {
 		decl.type.visit(this, null);
 		table.enter(decl.name, decl);
 		return null;
 	}
 
-	// **DONE**
 	public Object visitBaseType(BaseType type, Object arg) {
-		if (type.typeKind.equals(TypeKind.INT)) {
-			type.type = TypeKind.INT;
-		} else if (type.typeKind.equals(TypeKind.BOOLEAN)) {
-			type.type = TypeKind.BOOLEAN;
-		}
-		return type.type;
+		return null;
 	}
 
-	// **DONE**
 	public Object visitClassType(ClassType type, Object arg) {
-		Declaration d = (Declaration) type.className.visit(this, null);
-		if (d != null) {
-			return d;
-		} else {
-			throw new RuntimeException("Invalid type");
+		if (!table.getClasses().containsKey(type.className.name)) {
+			throw new ContextualAnalysisException("*** line " + type.posn.line + ": Class name expected");
 		}
+		type.className.decl = table.getClasses().get(type.className.name);
+		return null;
 	}
 
 	public Object visitArrayType(ArrayType type, Object arg) {
 		type.eltType.visit(this, null);
 		return null;
 	}
-
 	
-	// Statements
-	
-	//**DONE**
 	public Object visitBlockStmt(BlockStmt stmt, Object arg) {
 		table.openScope();
 		for (Statement s: stmt.sl) {
@@ -161,42 +152,26 @@ public class Identification implements Visitor<Object, Object> {
 		return null;
 	}
 
-	//**DONE**
 	public Object visitVardeclStmt(VarDeclStmt stmt, Object arg) {
-		TypeKind vType = (TypeKind) stmt.varDecl.visit(this, null);
-		TypeKind eType = (TypeKind) stmt.initExp.visit(this, null);
-		if (!vType.equals(eType)) {
-			throw new RuntimeException("Type inequality in a variable instantiation statment!!");
-		}
+		stmt.varDecl.visit(this, null);
+		stmt.initExp.visit(this, null);
 		return null;
 	}
 
-	//**DONE**
 	public Object visitAssignStmt(AssignStmt stmt, Object arg) {
-		TypeKind vType = (TypeKind) stmt.ref.visit(this, null);
-		TypeKind eType = (TypeKind) stmt.val.visit(this, null);
-		if (!vType.equals(eType)) {
-			throw new RuntimeException("Type inequality in an assignment statment!!");
-		}
+		stmt.ref.visit(this, null);
+		stmt.val.visit(this, null);
 		return null;
 	}
 
-	// **DONE** - WRONG: vType will be ArrayType instead of the elType needed
 	public Object visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
-		TypeKind vType = (TypeKind) stmt.ref.visit(this, null);
-		TypeKind index = (TypeKind) stmt.ix.visit(this, null);
-		TypeKind eType = (TypeKind) stmt.exp.visit(this, null);
-		if (!index.equals(TypeKind.INT)) {
-			throw new RuntimeException("Invalid Index Type");
-		}
-		if (!vType.equals(eType)) {
-			throw new RuntimeException("Type inequality in array element assignment");
-		}
+		stmt.ref.visit(this, null);
+		stmt.ix.visit(this, null);
+		stmt.exp.visit(this, null);
 		return null;
 	}
 
 	public Object visitCallStmt(CallStmt stmt, Object arg) {
-		// Need to check types here? Matching param types
 		stmt.methodRef.visit(this, null);
 		for (Expression e: stmt.argList) {
 			e.visit(this, null);
@@ -205,97 +180,50 @@ public class Identification implements Visitor<Object, Object> {
 	}
 
 	public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
-		MethodDecl m = (MethodDecl) arg;
-		TypeKind t = (TypeKind) stmt.returnExpr.visit(this, null);
-		if (!m.type.type.equals(t)) {
-			throw new RuntimeException("Return type invalid");
-		}
+		stmt.returnExpr.visit(this, null);
 		return null;
 	}
 
 	public Object visitIfStmt(IfStmt stmt, Object arg) {
-		TypeKind eType = (TypeKind) stmt.cond.visit(this, null);
-		if (!eType.equals(TypeKind.BOOLEAN)) {
-			throw new RuntimeException("Invalid conditional");
-		}
+		stmt.cond.visit(this, null);
+		table.openScope();
 		stmt.thenStmt.visit(this, null);
-		if (stmt.elseStmt != null) {
-			stmt.elseStmt.visit(this, null);
-		}
+		table.closeScope();
+		table.openScope();
+		stmt.elseStmt.visit(this, null);
+		table.closeScope();
 		return null;
 	}
 
 	public Object visitWhileStmt(WhileStmt stmt, Object arg) {
-		TypeKind eType = (TypeKind) stmt.cond.visit(this, null);
-		if (!eType.equals(TypeKind.BOOLEAN)) {
-			throw new RuntimeException("Invalid conditional");
-		}
+		stmt.cond.visit(this, null);
+		table.openScope();
 		stmt.body.visit(this, null);
+		table.closeScope();
 		return null;
 	}
 	
-	
-	// Expressions
-	
-	// **DONE**
 	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
-		Operator uOp = (Operator) expr.operator.visit(this, null);
-		TypeKind e = (TypeKind) expr.expr.visit(this, null);
-		if (uOp.name.equals("!")) {
-			if (e.equals(TypeKind.INT)) {
-				throw new RuntimeException("Binary Expression Expected");
-			}
-			expr.type = TypeKind.BOOLEAN;
-		} else {
-			if (e.equals(TypeKind.BOOLEAN)) {
-				throw new RuntimeException("Binary Expression Expected");
-			}
-			expr.type = TypeKind.INT;
-		}
-		return expr.type;
+		expr.operator.visit(this, null);
+		expr.expr.visit(this, null);
+		return null;
 	}
 
-	// **DONE**
 	public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
-		TypeKind leftType = (TypeKind) expr.left.visit(this, null);
-		Operator bOp = (Operator) expr.operator.visit(this, null);
-		TypeKind rightType = (TypeKind) expr.right.visit(this, null);
-		if (bOp.name.equals("||") || bOp.name.equals("&&")) {
-			if (!leftType.equals(TypeKind.BOOLEAN) || !rightType.equals(TypeKind.BOOLEAN)) {
-				throw new RuntimeException("Boolean Expression Expected");
-			}
-			expr.type = TypeKind.BOOLEAN;
-		} else if (!bOp.name.equals("==") && !bOp.name.equals("!=")) {
-			if (!leftType.equals(TypeKind.INT) || !rightType.equals(TypeKind.INT)) {
-				throw new RuntimeException("Integer Expression Expected");
-			}
-			expr.type = TypeKind.INT;
-		} else {
-			if (!leftType.equals(rightType)) {
-				throw new RuntimeException("Mismatched types in binary operation");
-			}
-			expr.type = leftType;
-		}
-		return expr.type;
+		expr.left.visit(this, null);
+		expr.operator.visit(this, null);
+		expr.right.visit(this, null);
+		return null;
 	}
 
-	// **DONE**
 	public Object visitRefExpr(RefExpr expr, Object arg) {
-		TypeKind r = (TypeKind) expr.ref.visit(this, null);
-		expr.type = r;
-		return expr.type;
+		expr.ref.visit(this, null);
+		return null;
 	}
 
 	public Object visitIxExpr(IxExpr expr, Object arg) {
-		TypeKind r = (TypeKind) expr.ref.visit(this, null);
-		TypeKind i = (TypeKind) expr.ixExpr.visit(this, null);
-		if (!r.equals(TypeKind.ARRAY)) {
-			throw new RuntimeException("Cannot index a non-array");
-		}
-		if (!i.equals(TypeKind.INT)) {
-			throw new RuntimeException("Index must be an integer");
-		}
-		// NEED A TYPE HERE... ElTYPE but how to access it?????
+		expr.ref.visit(this, null);
+		expr.ixExpr.visit(this, null);
 		return null;
 	}
 	
@@ -327,52 +255,174 @@ public class Identification implements Visitor<Object, Object> {
 		return null;
 	}
 
-	
-	// Values and Names
-	
-	
 	public Object visitThisRef(ThisRef ref, Object arg) {
-		
+		if (!currentStatic) {
+			ref.decl = currentClass;
+		} else {
+			throw new ContextualAnalysisException("*** line" + ref.posn.line + ": Cannot access instance in static context");
+		}
 		return null;
 	}
 
+	// Not quite working correctly... needs work
 	public Object visitIdRef(IdRef ref, Object arg) {
+		if (arg != null) {
+			if (table.getClasses().containsKey(ref.id.name)) {
+				ref.decl = table.getClasses().get(ref.id.name);
+				ref.id.decl = table.getClasses().get(ref.id.name);
+			} else {
+				ref.decl = table.retrieve(ref.id.name);
+				ref.id.decl = table.retrieve(ref.id.name);
+			}
+		} else {
+			Declaration decl = table.retrieve(ref.id.name);
+			if (decl instanceof MemberDecl) {
+				if (currentStatic) {
+					if (!((MemberDecl) decl).isStatic) {
+						throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Cannot reference instance members in static context");
+					} else {
+						ref.decl = decl;
+						ref.id.decl = decl;
+					}
+				} else {
+					ref.decl = decl;
+					ref.id.decl = decl;
+				}
+			} else if (decl instanceof ClassDecl) {
+				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": IdRef cannot be a class declaration");
+			} else {
+				ref.decl = decl;
+				ref.id.decl = decl;
+			}
+		}
 		return null;
 	}
 	
 	public Object visitQRef(QualRef ref, Object arg) {
-		Declaration iD = (Declaration) ref.id.visit(this, null);
-		if (iD.type instanceof ClassType)
+		ref.ref.visit(this, ref.id);
+		FieldDeclList outerFdl;
+		if ((ref.ref instanceof IdRef || ref.ref instanceof ThisRef) && ref.ref.decl instanceof ClassDecl) {
+			outerFdl = ((ClassDecl) ref.ref.decl).fieldDeclList;
+		} else {
+			outerFdl = ((ClassDecl) table.getClasses().get(((ClassType)(ref.ref.decl).type).className.name)).fieldDeclList;
+		}
 		
-		
-		
+		boolean found = false;
+		for (FieldDecl fd : outerFdl) {
+			if (ref.id.name.equals(fd.name)) {
+				ref.decl = fd;
+				found = true;
+			}
+		}
+		if (arg == null && !found) {
+			MethodDeclList mdl = ((ClassDecl) table.getClasses().get(((ClassType)(ref.ref.decl).type).className.name)).methodDeclList;
+			for (MethodDecl md : mdl) {
+				if (ref.id.name.equals(md.name)) {
+					ref.decl = md;
+					found = true;
+				}
+			}
+		}
+		if (!found) {
+			throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Reference does not exist in scope");
+		}
+		baseLevel = arg == null ? true : false;
+		ref.id.visit(this, ref);
 		return null;
 	}
 
-	
-	// Identifiers
-	
-	// **DONE**
 	public Object visitIdentifier(Identifier id, Object arg) {
-		id.decl = table.retrieve(id.name);
-		return id.decl;
+		ClassDecl cd;
+		boolean accessPrivate = false;
+		boolean isStatic = false;
+		boolean found = false;
+		if (((QualRef) arg).ref instanceof ThisRef) {
+			cd = currentClass;
+			accessPrivate = true;
+		} else if (((QualRef) arg).ref instanceof IdRef) {
+			if (((QualRef) arg).ref.decl instanceof ClassDecl) {
+				cd = (ClassDecl) ((QualRef) arg).ref.decl;
+				isStatic = true;
+			} else {
+				cd = (ClassDecl) table.getClasses().get(((ClassDecl)((QualRef) arg).ref.decl).name);
+			}
+		} else {
+			cd = (ClassDecl) table.getClasses().get(((ClassDecl)((QualRef) arg).ref.decl).name);
+		}
+		System.out.println(((QualRef) arg).ref);
+		FieldDeclList fdl = cd.fieldDeclList;
+		System.out.println(id.name);
+		System.out.println("accessPrivate: " + accessPrivate + " isStatic: " + isStatic + " fieldDeclList: " + fdl.toString());
+		if (baseLevel) {
+			MethodDeclList mdl = cd.methodDeclList;
+			if (!isStatic && !accessPrivate) {
+				// Non static method that is public in another class
+				for (MethodDecl md : mdl) {
+					if (!md.isStatic && !md.isPrivate) { 
+						if (id.name.equals(md.name)) {
+							found = true;
+						}
+					}
+				} 
+			} else if (!accessPrivate) {
+				// Static method of a different class
+				for (MethodDecl md : mdl) {
+					if (isStatic && !md.isPrivate) {
+						if (id.name.equals(md.name)) {
+							found = true;
+						}
+					}
+				}
+			} else {
+				// Method in this class static or non-static
+				for (MethodDecl md : mdl) {
+					if (id.name.equals(md.name)) {
+						found = true;
+					}
+				}
+			}
+		}
+		if (!isStatic && !accessPrivate) {
+			// Non static field that is public
+			for (FieldDecl fd : fdl) {
+				if (!fd.isPrivate && !fd.isStatic) {
+					if (id.name.equals(fd.name)) { 
+						found = true;
+					}
+				}
+			}
+		} else if (!accessPrivate) {
+			// Static field of a different class
+			for (FieldDecl fd : fdl) {
+				if (fd.isStatic && !fd.isPrivate) {
+					if (id.name.equals(fd.name)) { 
+						found = true;
+					}
+				}
+			}
+		} else {
+			// Field in this class (private and static/non-static access)
+			for (FieldDecl fd : fdl) {
+				if (id.name.equals(fd.name)) {
+					found = true;
+				}
+			}
+		}
+		if (!found) {
+			throw new ContextualAnalysisException("*** line " + id.posn.line + ": Method or field not found");
+		}
+		return null;
 	}
-
 	
-	// Operators
-	
-	// **DONE**
 	public Object visitOperator(Operator op, Object arg) {
-		return op;
+		return null;
 	}
 
-	// **DONE**?
 	public Object visitIntLiteral(IntLiteral num, Object arg) {
-		return TokenType.INT;
+		return null;
 	}
 
-	// **DONE**?
 	public Object visitBooleanLiteral(BooleanLiteral bool, Object arg) {
-		return TokenType.BOOLEAN;
+		return null;
 	}
 }

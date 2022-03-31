@@ -30,6 +30,14 @@ public class IDTable {
 		return null;
 	}
 	
+	public Declaration getClass(String s) {
+		return table.get(0).get(s);
+	}
+	
+	public HashMap<String, Declaration> getClasses() {
+		return table.get(0);
+	}
+	
 	public void openScope() {
 		table.add(new HashMap<String, Declaration>());
 		level++;

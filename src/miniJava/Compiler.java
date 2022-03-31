@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 import miniJava.AbstractSyntaxTrees.ASTDisplay;
+import miniJava.ContextualAnalysis.ContextualAnalysisException;
+import miniJava.ContextualAnalysis.Identification;
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
 
@@ -22,14 +24,21 @@ public class Compiler {
 		Parser parser = new Parser(scanner);
 		System.out.println("Syntactic Analysis ... ");
 		try {
+			miniJava.AbstractSyntaxTrees.Package parsed = parser.parse();
+			new Identification(parsed);
 			System.out.println("Valid miniJava Program");
 			ASTDisplay a = new ASTDisplay();
-			a.showTree(parser.parse());
+			a.showTree(parsed);
 			System.exit(0);
 		} catch (SyntaxError e) {
 			System.out.println("Invalid miniJava Program");
 			e.status();
 			// e.printStackTrace();
+			System.exit(4);
+		} catch (ContextualAnalysisException e) {
+			System.out.println("Contextual Analysis Error");
+			e.status();
+			e.printStackTrace();
 			System.exit(4);
 		}
 	}
