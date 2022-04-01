@@ -173,6 +173,9 @@ public class Identification implements Visitor<Object, Object> {
 
 	public Object visitCallStmt(CallStmt stmt, Object arg) {
 		stmt.methodRef.visit(this, null);
+		if (!(stmt.methodRef.decl instanceof MethodDecl)) {
+			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Cannot utilize a method call on a variable");
+		}
 		for (Expression e: stmt.argList) {
 			e.visit(this, null);
 		}
@@ -228,7 +231,9 @@ public class Identification implements Visitor<Object, Object> {
 	}
 	
 	public Object visitCallExpr(CallExpr expr, Object arg) {
-		expr.functionRef.visit(this, null);
+		if (!(expr.functionRef.decl instanceof MethodDecl)) {
+			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Cannot utilize a method call on a variable");
+		}
 		for (Expression e: expr.argList) {
 			e.visit(this, null);
 		}
@@ -339,20 +344,13 @@ public class Identification implements Visitor<Object, Object> {
 		if (((QualRef) arg).ref instanceof ThisRef) {
 			cd = currentClass;
 			accessPrivate = true;
-		} else if (((QualRef) arg).ref instanceof IdRef) {
-			if (((QualRef) arg).ref.decl instanceof ClassDecl) {
-				cd = (ClassDecl) ((QualRef) arg).ref.decl;
-				isStatic = true;
-			} else {
-				cd = (ClassDecl) table.getClasses().get(((ClassDecl)((QualRef) arg).ref.decl).name);
-			}
+		} else if (((QualRef) arg).ref instanceof IdRef && ((QualRef) arg).ref.decl instanceof ClassDecl) {
+			cd = (ClassDecl) ((QualRef) arg).ref.decl;
+			isStatic = true;
 		} else {
-			cd = (ClassDecl) table.getClasses().get(((ClassDecl)((QualRef) arg).ref.decl).name);
+			cd = (ClassDecl) table.getClasses().get(((ClassType)((QualRef) arg).ref.decl.type).className.name);
 		}
-		System.out.println(((QualRef) arg).ref);
 		FieldDeclList fdl = cd.fieldDeclList;
-		System.out.println(id.name);
-		System.out.println("accessPrivate: " + accessPrivate + " isStatic: " + isStatic + " fieldDeclList: " + fdl.toString());
 		if (baseLevel) {
 			MethodDeclList mdl = cd.methodDeclList;
 			if (!isStatic && !accessPrivate) {

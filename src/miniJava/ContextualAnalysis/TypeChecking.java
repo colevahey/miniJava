@@ -140,9 +140,6 @@ public class TypeChecking implements Visitor<Object, Object> {
 	@Override
 	public Object visitCallStmt(CallStmt stmt, Object arg) {
 		stmt.methodRef.visit(this, null);
-		if (!(stmt.methodRef.decl instanceof MethodDecl)) {
-			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Cannot call on a variable");
-		}
 		if (stmt.argList.size() > ((MethodDecl) stmt.methodRef.decl).parameterDeclList.size()) {
 			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Too many arguments in method call");
 		} else if (stmt.argList.size() < ((MethodDecl) stmt.methodRef.decl).parameterDeclList.size()) {
