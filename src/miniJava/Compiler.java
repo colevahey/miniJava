@@ -28,8 +28,8 @@ public class Compiler {
 			Package parsed = parser.parse();
 			new Identification(parsed);
 			System.out.println("Valid miniJava Program");
-			ASTDisplay a = new ASTDisplay();
-			a.showTree(parsed);
+			// ASTDisplay a = new ASTDisplay();
+			// a.showTree(parsed);
 			System.exit(0);
 		} catch (SyntaxError e) {
 			System.out.println("Invalid miniJava Program");

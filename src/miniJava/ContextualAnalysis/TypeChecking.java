@@ -103,7 +103,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind vType = (TypeKind) stmt.varDecl.visit(this, null);
 		TypeKind eType = (TypeKind) stmt.initExp.visit(this, null);
 		if (!vType.equals(eType)) {
-			if (!eType.equals(TypeKind.NULL)) { 
+			if (!eType.equals(TypeKind.NULL) || vType.equals(TypeKind.INT) || vType.equals(TypeKind.BOOLEAN)) { 
 				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in declaration");
 			}
 		} else {
@@ -143,7 +143,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind vType = (TypeKind) stmt.ref.visit(this, null);
 		TypeKind eType = (TypeKind) stmt.val.visit(this, null);
 		if (!vType.equals(eType)) {
-			if (!eType.equals(TypeKind.NULL)) { 
+			if (!eType.equals(TypeKind.NULL) || vType.equals(TypeKind.INT) || vType.equals(TypeKind.BOOLEAN)) { 
 				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in assignment");
 			}
 		} else {
@@ -188,7 +188,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 		}
 		if (vType.equals(TypeKind.ARRAY)) {
 			if (!((ArrayType)stmt.ref.decl.type).eltType.typeKind.equals(eType)) {
-				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Type inequality in array element assignment");
+				if (!eType.equals(TypeKind.NULL) || stmt.ref.decl.type.typeKind.equals(TypeKind.INT) || stmt.ref.decl.type.typeKind.equals(TypeKind.BOOLEAN)) {
+					throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Type inequality in array element assignment");
+				}
 			}
 		} else {
 			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Cannot access index of non-array type");
@@ -233,7 +235,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 	public Object visitIfStmt(IfStmt stmt, Object arg) {
 		TypeKind eType = (TypeKind) stmt.cond.visit(this, null);
 		if (!eType.equals(TypeKind.BOOLEAN)) {
-			throw new ContextualAnalysisException("Invalid conditional");
+			if (!eType.equals(TypeKind.NULL)) { 
+				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Invalid conditional statement");
+			}
 		}
 		stmt.thenStmt.visit(this, null);
 		if (stmt.elseStmt != null) {
@@ -294,16 +298,21 @@ public class TypeChecking implements Visitor<Object, Object> {
 			if (!leftType.equals(rightType)) {
 				if (!rightType.equals(TypeKind.NULL)) {
 					throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Mismatched types in binary operation");
+				} else {
+					expr.type = TypeKind.NULL;
 				}
 			} else if (leftType.equals(TypeKind.CLASS)) {
 				if (!rightType.equals(TypeKind.NULL)) { 
 					if (!((ClassType) ((RefExpr) expr.left).ref.decl.type).className.name.equals(((ClassType) ((RefExpr) expr.right).ref.decl.type).className.name)) {
 						throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Mismatched class types in binary operation");
+					} else {
+						expr.type = TypeKind.NULL;
 					}
 				}
+			// else if (leftType.equals(TypeKind.ARRAY))
+			} else {
+				expr.type = leftType;
 			}
-//			else if (leftType.equals(TypeKind.ARRAY))
-			expr.type = leftType;
 		}
 		return expr.type;
 	}
