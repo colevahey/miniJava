@@ -38,6 +38,10 @@ public class IDTable {
 		return table.get(0);
 	}
 	
+	public HashMap<String, Declaration> getCurrentLevel() {
+		return table.get(level);
+	}
+	
 	public void openScope() {
 		table.add(new HashMap<String, Declaration>());
 		level++;

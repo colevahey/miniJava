@@ -138,10 +138,7 @@ public class Scanner {
 			while (isGraphic(currentChar)) {
 				takeIt();
 			}
-			if (currentChar == '\n') {							// If a newline
-				takeIt();
-				currentLine++;
-			} else if (currentChar == '\r') {					// If just a carriage return
+			if (currentChar == '\n' || currentChar == '\r') {	// If a newline or just carriage return
 				takeIt();
 				currentLine++;
 			}
@@ -158,6 +155,9 @@ public class Scanner {
 						break;
 					}
 				} else {
+					if (currentChar == '\n' || currentChar == '\r') {
+						currentLine++;
+					}
 					takeIt();
 				}
 			}

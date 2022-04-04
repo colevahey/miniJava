@@ -89,7 +89,9 @@ public class Parser {
 			}
 		}
 		accept(TokenType.RCBRACKET);									// }
-		return new ClassDecl(className, fdl, mdl, start);
+		ClassDecl cd = new ClassDecl(className, fdl, mdl, start);
+		cd.type = new ClassType(new Identifier(new Token(TokenType.CLASS, className, start)), start);
+		return cd;
 	}
 	
 	private Boolean parseVisibility() {
