@@ -72,7 +72,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitBaseType(BaseType type, Object arg) {
-		if (type.typeKind.equals(TypeKind.INT) || type.typeKind.equals(TypeKind.BOOLEAN)) {
+		if (type.typeKind.equals(TypeKind.INT) || type.typeKind.equals(TypeKind.BOOLEAN) || type.typeKind.equals(TypeKind.NULL)) {
 			return type.typeKind;
 		}
 		return null;
@@ -103,7 +103,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind vType = (TypeKind) stmt.varDecl.visit(this, null);
 		TypeKind eType = (TypeKind) stmt.initExp.visit(this, null);
 		if (!vType.equals(eType)) {
-			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in declaration");
+			if (!eType.equals(TypeKind.NULL)) { 
+				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in declaration");
+			}
 		} else {
 			if (vType.equals(TypeKind.CLASS)) {
 				if (stmt.initExp instanceof NewObjectExpr) {
@@ -141,7 +143,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind vType = (TypeKind) stmt.ref.visit(this, null);
 		TypeKind eType = (TypeKind) stmt.val.visit(this, null);
 		if (!vType.equals(eType)) {
-			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in assignment");
+			if (!eType.equals(TypeKind.NULL)) { 
+				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched types in assignment");
+			}
 		} else {
 			if (vType.equals(TypeKind.CLASS)) {
 				if (stmt.val instanceof NewObjectExpr) {
@@ -214,7 +218,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 	public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
 		if (stmt.returnExpr != null) {
 			TypeKind ret = (TypeKind) stmt.returnExpr.visit(this, null);
-			if (!ret.equals(arg)) {
+			if (!ret.equals(arg) && !ret.equals(TypeKind.NULL)) {
 				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Invalid return type");
 			}
 		} else {
@@ -288,8 +292,17 @@ public class TypeChecking implements Visitor<Object, Object> {
 			expr.type = TypeKind.INT;
 		} else {
 			if (!leftType.equals(rightType)) {
-				throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Mismatched types in binary operation");
+				if (!rightType.equals(TypeKind.NULL)) {
+					throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Mismatched types in binary operation");
+				}
+			} else if (leftType.equals(TypeKind.CLASS)) {
+				if (!rightType.equals(TypeKind.NULL)) { 
+					if (!((ClassType) ((RefExpr) expr.left).ref.decl.type).className.name.equals(((ClassType) ((RefExpr) expr.right).ref.decl.type).className.name)) {
+						throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Mismatched class types in binary operation");
+					}
+				}
 			}
+//			else if (leftType.equals(TypeKind.ARRAY))
 			expr.type = leftType;
 		}
 		return expr.type;
@@ -360,8 +373,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitNullLiteralExpr(NullLiteralExpr expr, Object arg) {
-		expr.type = TypeKind.NULL;
-		return expr.type;
+		return TypeKind.NULL;
 	}
 
 	@Override
