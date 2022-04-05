@@ -32,7 +32,7 @@ public class Compiler {
 			// a.showTree(parsed);
 			System.exit(0);
 		} catch (SyntaxError e) {
-			System.out.println("Invalid miniJava Program");
+			System.out.println("Syntax Error");
 			e.status();
 			// e.printStackTrace();
 			System.exit(4);

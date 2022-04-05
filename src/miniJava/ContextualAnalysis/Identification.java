@@ -147,7 +147,7 @@ public class Identification implements Visitor<Object, Object> {
 
 	public Object visitClassType(ClassType type, Object arg) {
 		if (!table.getClasses().containsKey(type.className.name)) {
-			throw new ContextualAnalysisException("*** line " + type.posn.line + ": Class name expected");
+			throw new ContextualAnalysisException("*** line " + type.posn.line + ": Invalid class type");
 		}
 		type.className.decl = table.getClasses().get(type.className.name);
 		return null;

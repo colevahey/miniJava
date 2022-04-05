@@ -43,7 +43,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind ret = (TypeKind) md.type.visit(this, null);
 		boolean returned = false;
 		for (Statement st : md.statementList) {
-			Object sR = st.visit(this, ret);
+			Object sR = st.visit(this, md.type);
 			if (sR != null) {
 				returned = (boolean) sR || returned;
 			}
@@ -93,7 +93,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 	@Override
 	public Object visitBlockStmt(BlockStmt stmt, Object arg) {
 		for (Statement s : stmt.sl) {
-			s.visit(this, null);
+			s.visit(this, arg);
 		}
 		return null;
 	}
@@ -207,9 +207,37 @@ public class TypeChecking implements Visitor<Object, Object> {
 			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Missing arguments in method call");
 		} else {
 			for (int i = 0; i < stmt.argList.size(); i++) {
+				TypeDenoter expected = ((MethodDecl) stmt.methodRef.decl).parameterDeclList.get(i).type;
 				TypeKind t = (TypeKind) stmt.argList.get(i).visit(this, null);
-				if (!t.equals(((MethodDecl) stmt.methodRef.decl).parameterDeclList.get(i).type.typeKind)) {
-					throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched argument type");
+				if (!t.equals(expected.typeKind)) {
+					throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched argument types");
+				} else {
+					if (expected.typeKind.equals(TypeKind.CLASS)) {
+						if (stmt.argList.get(i) instanceof NewObjectExpr) {
+							if (!(((ClassType) expected).className.name.equals(((NewObjectExpr) stmt.argList.get(i)).classtype.className.name))) {
+								throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched class types in method call arguments");
+							}
+						} else {
+							if (!(((ClassType) expected).className.name.equals(((ClassType) ((RefExpr) stmt.argList.get(i)).ref.decl.type).className.name))) {
+								throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched class types in method call arguments");
+							}
+						}
+					} else if (expected.typeKind.equals(TypeKind.ARRAY)) {
+						TypeKind aT = ((ArrayType) expected).eltType.typeKind;
+						TypeDenoter rT;
+						if (stmt.argList.get(i) instanceof NewArrayExpr) {
+							rT = ((NewArrayExpr) stmt.argList.get(i)).eltType;
+						} else {
+							rT = ((ArrayType) ((RefExpr)stmt.argList.get(i)).ref.decl.type).eltType;
+						}
+						if (!aT.equals(rT.typeKind)) {
+							throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched array types in method call arguments");
+						} else if (aT.equals(TypeKind.CLASS)) {
+							if (!(((ClassType) ((ArrayType) expected).eltType).className.name.equals(((ClassType) rT).className.name))) {
+								throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched array types in method call arguments");
+							}
+						}
+					}
 				}
 			}
 		}
@@ -220,13 +248,43 @@ public class TypeChecking implements Visitor<Object, Object> {
 	public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
 		if (stmt.returnExpr != null) {
 			TypeKind ret = (TypeKind) stmt.returnExpr.visit(this, null);
-			if (!ret.equals(arg) && !ret.equals(TypeKind.NULL)) {
-				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Invalid return type");
+			TypeKind argType = ((TypeDenoter) arg).typeKind;
+			if (!ret.equals(argType)) {
+				if (!ret.equals(TypeKind.NULL)) {
+					throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Invalid return type");
+				} else if (!argType.equals(TypeKind.ARRAY) && !argType.equals(TypeKind.CLASS)) {
+					throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Cannot return null for base type");
+				}
+			} else {
+				if (argType.equals(TypeKind.CLASS)) {
+					if (stmt.returnExpr instanceof NewObjectExpr) {
+						if (!(((ClassType) ((TypeDenoter) arg)).className.name.equals(((NewObjectExpr) stmt.returnExpr).classtype.className.name))) {
+							throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched class types in return statement");
+						}
+					} else {
+						if (!(((ClassType) ((TypeDenoter) arg)).className.name.equals(((ClassType) ((RefExpr) stmt.returnExpr).ref.decl.type).className.name))) {
+							throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched class types in return statement");
+						}
+					}
+				} else if (argType.equals(TypeKind.ARRAY)) {
+					TypeKind aT = ((ArrayType) ((TypeDenoter) arg)).eltType.typeKind;
+					TypeDenoter rT;
+					if (stmt.returnExpr instanceof NewArrayExpr) {
+						rT = ((NewArrayExpr) stmt.returnExpr).eltType;
+					} else {
+						rT = ((ArrayType) ((RefExpr)stmt.returnExpr).ref.decl.type).eltType;
+					}
+					if (!aT.equals(rT.typeKind)) {
+						throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched array types in return statement");
+					} else if (aT.equals(TypeKind.CLASS)) {
+						if (!(((ClassType) ((ArrayType) ((TypeDenoter) arg)).eltType).className.name.equals(((ClassType) rT).className.name))) {
+							throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Mismatched array types in return statement");
+						}
+					}
+				}
 			}
-		} else {
-			if (arg != null) {
-				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Missing argument in return statement");
-			}
+		} else if (arg != null) {
+			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Missing argument in return statement");
 		}
 		return true;
 	}
@@ -239,9 +297,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Invalid conditional statement");
 			}
 		}
-		stmt.thenStmt.visit(this, null);
+		stmt.thenStmt.visit(this, arg);
 		if (stmt.elseStmt != null) {
-			stmt.elseStmt.visit(this, null);
+			stmt.elseStmt.visit(this, arg);
 		}
 		return null;
 	}
@@ -252,7 +310,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 		if (!eType.equals(TypeKind.BOOLEAN)) {
 			throw new ContextualAnalysisException("Invalid conditional");
 		}
-		stmt.body.visit(this, null);
+		stmt.body.visit(this, arg);
 		return null;
 	}
 
