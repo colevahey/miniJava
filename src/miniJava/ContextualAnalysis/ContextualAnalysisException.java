@@ -7,6 +7,8 @@ public class ContextualAnalysisException extends RuntimeException {
 	}
 	
 	public void status() {
-		System.out.println(errorMessage);
+		if (errorMessage != null) {
+			System.out.println(errorMessage);
+		}
 	}
 }

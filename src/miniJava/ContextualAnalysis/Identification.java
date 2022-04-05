@@ -60,7 +60,7 @@ public class Identification implements Visitor<Object, Object> {
 		
 		for (ClassDecl cd: prog.classDeclList) {
 			if (table.getCurrentLevel().containsKey(cd.name)) {
-				throw new ContextualAnalysisException("*** line " + cd.posn.line + ": Cannot redeclare class");
+				throw new ContextualAnalysisException("*** line " + cd.posn.line + ": (Identification) Cannot redeclare class");
 			}
 			table.enter(cd.name, cd);
 		}
@@ -76,13 +76,13 @@ public class Identification implements Visitor<Object, Object> {
 		table.openScope();
 		for (FieldDecl fd: cd.fieldDeclList) {
 			if (table.getCurrentLevel().containsKey(fd.name)) {
-				throw new ContextualAnalysisException("*** line " + fd.posn.line + ": Cannot redeclare field in scope");
+				throw new ContextualAnalysisException("*** line " + fd.posn.line + ": (Identification) Cannot redeclare field in scope");
 			}
 			table.enter(fd.name, fd);
 		}
 		for (MethodDecl md: cd.methodDeclList) {
 			if (table.getCurrentLevel().containsKey(md.name)) {
-				throw new ContextualAnalysisException("*** line " + md.posn.line + ": Cannot redeclare method in scope");
+				throw new ContextualAnalysisException("*** line " + md.posn.line + ": (Identification) Cannot redeclare method in scope");
 			}
 			table.enter(md.name, md);
 		}
@@ -126,7 +126,7 @@ public class Identification implements Visitor<Object, Object> {
 	public Object visitParameterDecl(ParameterDecl pd, Object arg) {
 		pd.type.visit(this, null);
 		if (table.getCurrentLevel().containsKey(pd.name)) {
-			throw new ContextualAnalysisException("*** line " + pd.posn.line + ": Cannot redeclare parameter in scope");
+			throw new ContextualAnalysisException("*** line " + pd.posn.line + ": (Identification) Cannot redeclare parameter in scope");
 		}
 		table.enter(pd.name, pd);
 		return null;
@@ -135,7 +135,7 @@ public class Identification implements Visitor<Object, Object> {
 	public Object visitVarDecl(VarDecl decl, Object arg) {
 		decl.type.visit(this, null);
 		if (table.getCurrentLevel().containsKey(decl.name)) {
-			throw new ContextualAnalysisException("*** line " + decl.posn.line + ": Cannot redeclare variable in scope");
+			throw new ContextualAnalysisException("*** line " + decl.posn.line + ": (Identification) Cannot redeclare variable in scope");
 		}
 		table.enter(decl.name, decl);
 		return null;
@@ -147,7 +147,7 @@ public class Identification implements Visitor<Object, Object> {
 
 	public Object visitClassType(ClassType type, Object arg) {
 		if (!table.getClasses().containsKey(type.className.name)) {
-			throw new ContextualAnalysisException("*** line " + type.posn.line + ": Invalid class type");
+			throw new ContextualAnalysisException("*** line " + type.posn.line + ": (Identification) Invalid class type");
 		}
 		type.className.decl = table.getClasses().get(type.className.name);
 		return null;
@@ -189,7 +189,7 @@ public class Identification implements Visitor<Object, Object> {
 	public Object visitCallStmt(CallStmt stmt, Object arg) {
 		stmt.methodRef.visit(this, null);
 		if (!(stmt.methodRef.decl instanceof MethodDecl)) {
-			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": Cannot utilize a method call on a variable");
+			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": (Identification) Cannot utilize a method call on a variable");
 		}
 		for (Expression e: stmt.argList) {
 			e.visit(this, null);
@@ -250,8 +250,10 @@ public class Identification implements Visitor<Object, Object> {
 	}
 	
 	public Object visitCallExpr(CallExpr expr, Object arg) {
+		// ERROR HERE!!! TODO
+		expr.functionRef.visit(this, null);
 		if (!(expr.functionRef.decl instanceof MethodDecl)) {
-			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": Cannot utilize a method call on a variable");
+			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": (Identification) Cannot utilize a method call on a variable");
 		}
 		for (Expression e: expr.argList) {
 			e.visit(this, null);
@@ -283,7 +285,7 @@ public class Identification implements Visitor<Object, Object> {
 		if (!currentStatic) {
 			ref.decl = currentClass;
 		} else {
-			throw new ContextualAnalysisException("*** line" + ref.posn.line + ": Cannot access instance in static context");
+			throw new ContextualAnalysisException("*** line" + ref.posn.line + ": (Identification) Cannot access instance in static context");
 		}
 		return null;
 	}
@@ -302,7 +304,7 @@ public class Identification implements Visitor<Object, Object> {
 			if (decl instanceof MemberDecl) {
 				if (currentStatic) {
 					if (!((MemberDecl) decl).isStatic) {
-						throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Cannot reference instance members in static context");
+						throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Cannot reference instance members in static context");
 					} else {
 						ref.decl = decl;
 						ref.id.decl = decl;
@@ -312,9 +314,9 @@ public class Identification implements Visitor<Object, Object> {
 					ref.id.decl = decl;
 				}
 			} else if (decl instanceof ClassDecl) {
-				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": IdRef cannot be a class declaration");
+				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) IdRef cannot be a class declaration");
 			} else if (decl == null) {
-				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Reference cannot be found in scope");
+				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Reference cannot be found in scope");
 			} else {
 				ref.decl = decl;
 				ref.id.decl = decl;
@@ -326,14 +328,14 @@ public class Identification implements Visitor<Object, Object> {
 	public Object visitQRef(QualRef ref, Object arg) {
 		ref.ref.visit(this, ref.id);
 		if (ref.ref.decl == null) {
-			throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Cannot access reference member " + ref.id.name);
+			throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Cannot access reference member " + ref.id.name);
 		}
 		FieldDeclList outerFdl;
 		if ((ref.ref instanceof IdRef || ref.ref instanceof ThisRef) && ref.ref.decl instanceof ClassDecl) {
 			outerFdl = ((ClassDecl) ref.ref.decl).fieldDeclList;
 		} else {
 			if (!(ref.ref.decl.type instanceof ClassType)) {
-				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Cannot dereference variable " + ref.ref.decl.name);
+				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Cannot dereference variable " + ref.ref.decl.name);
 			}
 			outerFdl = ((ClassDecl) table.getClasses().get(((ClassType)(ref.ref.decl).type).className.name)).fieldDeclList;
 		}
@@ -360,7 +362,7 @@ public class Identification implements Visitor<Object, Object> {
 			}
 		}
 		if (!found) {
-			throw new ContextualAnalysisException("*** line " + ref.posn.line + ": Reference does not exist in scope");
+			throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Reference does not exist in scope");
 		}
 		baseLevel = arg == null ? true : false;
 		ref.id.visit(this, ref);
@@ -438,7 +440,7 @@ public class Identification implements Visitor<Object, Object> {
 			}
 		}
 		if (!found) {
-			throw new ContextualAnalysisException("*** line " + id.posn.line + ": Method or field not found in scope");
+			throw new ContextualAnalysisException("*** line " + id.posn.line + ": (Identification) Method or field not found in scope");
 		}
 		return null;
 	}
