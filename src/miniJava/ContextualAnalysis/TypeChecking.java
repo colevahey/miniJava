@@ -324,7 +324,13 @@ public class TypeChecking implements Visitor<Object, Object> {
 					}
 				}
 			}
-		} else if (arg != null) {
+		} else if (arg != null && !((TypeDenoter) arg).typeKind.equals(TypeKind.VOID)) {
+			System.out.println("AH");
+			try {
+				throw new RuntimeException();
+			} catch (RuntimeException e) {
+				e.printStackTrace();
+			}
 			catchError("*** line " + stmt.posn.line + ": (Type Checking) Missing argument in return statement");
 			return true;
 		}

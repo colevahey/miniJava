@@ -250,7 +250,6 @@ public class Identification implements Visitor<Object, Object> {
 	}
 	
 	public Object visitCallExpr(CallExpr expr, Object arg) {
-		// ERROR HERE!!! TODO
 		expr.functionRef.visit(this, null);
 		if (!(expr.functionRef.decl instanceof MethodDecl)) {
 			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": (Identification) Cannot utilize a method call on a variable");

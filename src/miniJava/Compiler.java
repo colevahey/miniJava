@@ -32,12 +32,10 @@ public class Compiler {
 			// a.showTree(parsed);
 			System.exit(0);
 		} catch (SyntaxError e) {
-			System.out.println("Syntax Error");
 			e.status();
 			// e.printStackTrace();
 			System.exit(4);
 		} catch (ContextualAnalysisException e) {
-			System.out.println("Contextual Analysis Error");
 			e.status();
 			// e.printStackTrace();
 			System.exit(4);
