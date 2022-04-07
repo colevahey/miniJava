@@ -124,7 +124,11 @@ public class TypeChecking implements Visitor<Object, Object> {
 					}
 				} else if (stmt.initExp instanceof CallExpr) {
 					if (!((ClassType) stmt.varDecl.type).className.name.equals(((ClassType) ((CallExpr) stmt.initExp).functionRef.decl.type).className.name)) {
-						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in declaration");
+					}
+				} else if (stmt.initExp instanceof IxExpr) {
+					if (!((ClassType) stmt.varDecl.type).className.name.equals(((ClassType) ((ArrayType) ((IxExpr) stmt.initExp).ref.decl.type).eltType).className.name)) {
+						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in declaration");
 					}
 				} else {
 					if (!(((ClassType) stmt.varDecl.type).className.name.equals(((ClassType) ((RefExpr) stmt.initExp).ref.decl.type).className.name))) {
@@ -138,6 +142,8 @@ public class TypeChecking implements Visitor<Object, Object> {
 					rT = ((NewArrayExpr) stmt.initExp).eltType;
 				} else if (stmt.initExp instanceof CallExpr) {
 					rT = ((ArrayType) ((CallExpr) stmt.initExp).functionRef.decl.type).eltType;
+				} else if ((stmt.initExp instanceof IxExpr)) {
+					rT = ((ArrayType) ((IxExpr) stmt.initExp).ref.decl.type).eltType;
 				} else {
 					rT = ((ArrayType) ((RefExpr)stmt.initExp).ref.decl.type).eltType;
 				}
@@ -170,7 +176,11 @@ public class TypeChecking implements Visitor<Object, Object> {
 					}
 				} else if (stmt.val instanceof CallExpr) {
 					if (!((ClassType) stmt.ref.decl.type).className.name.equals(((ClassType) ((CallExpr) stmt.val).functionRef.decl.type).className.name)) {
-						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in assignment");
+					}
+				} else if (stmt.val instanceof IxExpr) {
+					if (!((ClassType) stmt.ref.decl.type).className.name.equals(((ClassType) ((ArrayType) ((IxExpr) stmt.val).ref.decl.type).eltType).className.name)) {
+						catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in assignmet");
 					}
 				} else {
 					if (!(((ClassType) stmt.ref.decl.type).className.name.equals(((ClassType) ((RefExpr) stmt.val).ref.decl.type).className.name))) {
@@ -184,6 +194,8 @@ public class TypeChecking implements Visitor<Object, Object> {
 					rT = ((NewArrayExpr) stmt.val).eltType;
 				} else if (stmt.val instanceof CallExpr) {
 					rT = ((ArrayType) ((CallExpr) stmt.val).functionRef.decl.type).eltType;
+				} else if (stmt.val instanceof IxExpr) {
+					rT = ((ArrayType) ((IxExpr) stmt.val).ref.decl.type).eltType;
 				} else {
 					rT = ((ArrayType) ((RefExpr)stmt.val).ref.decl.type).eltType;
 				}
@@ -243,6 +255,10 @@ public class TypeChecking implements Visitor<Object, Object> {
 							if (!((ClassType) expected).className.name.equals(((ClassType) ((CallExpr) stmt.argList.get(i)).functionRef.decl.type).className.name)) {
 								catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
 							}
+						} else if (stmt.argList.get(i) instanceof IxExpr) {
+							if (!((ClassType) expected).className.name.equals(((ClassType) ((ArrayType) ((IxExpr) stmt.argList.get(i)).ref.decl.type).eltType).className.name)) {
+								catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+							}
 						} else {
 							if (!(((ClassType) expected).className.name.equals(((ClassType) ((RefExpr) stmt.argList.get(i)).ref.decl.type).className.name))) {
 								catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
@@ -255,7 +271,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 							rT = ((NewArrayExpr) stmt.argList.get(i)).eltType;
 						} else if (stmt.argList.get(i) instanceof CallExpr) {
 							rT = ((ArrayType) ((CallExpr) stmt.argList.get(i)).functionRef.decl.type).eltType;
-						} else {
+						} else if (stmt.argList.get(i) instanceof IxExpr) {
+							rT = ((ArrayType) ((IxExpr) stmt.argList.get(i)).ref.decl.type).eltType;
+						}else {
 							rT = ((ArrayType) ((RefExpr)stmt.argList.get(i)).ref.decl.type).eltType;
 						}
 						if (!aT.equals(rT.typeKind)) {
@@ -294,7 +312,12 @@ public class TypeChecking implements Visitor<Object, Object> {
 						}
 					} else if (stmt.returnExpr instanceof CallExpr) {
 						if (!((ClassType) ((TypeDenoter) arg)).className.name.equals(((ClassType) ((CallExpr) stmt.returnExpr).functionRef.decl.type).className.name)) {
-							catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+							catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in return statement");
+						}
+						return true;
+					} else if (stmt.returnExpr instanceof IxExpr) {
+						if (!((ClassType) ((TypeDenoter) arg)).className.name.equals(((ClassType) ((ArrayType) ((IxExpr) stmt.returnExpr).ref.decl.type).eltType).className.name)) {
+							catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched class types in return statement");
 						}
 						return true;
 					} else {
@@ -310,6 +333,8 @@ public class TypeChecking implements Visitor<Object, Object> {
 						rT = ((NewArrayExpr) stmt.returnExpr).eltType;
 					} else if (stmt.returnExpr instanceof CallExpr) {
 						rT = ((ArrayType) ((CallExpr) stmt.returnExpr).functionRef.decl.type).eltType;
+					} else if (stmt.returnExpr instanceof IxExpr) {
+						rT = ((ArrayType) ((IxExpr) stmt.returnExpr).ref.decl.type).eltType;
 					} else {
 						rT = ((ArrayType) ((RefExpr)stmt.returnExpr).ref.decl.type).eltType;
 					}
@@ -325,12 +350,6 @@ public class TypeChecking implements Visitor<Object, Object> {
 				}
 			}
 		} else if (arg != null && !((TypeDenoter) arg).typeKind.equals(TypeKind.VOID)) {
-			System.out.println("AH");
-			try {
-				throw new RuntimeException();
-			} catch (RuntimeException e) {
-				e.printStackTrace();
-			}
 			catchError("*** line " + stmt.posn.line + ": (Type Checking) Missing argument in return statement");
 			return true;
 		}
@@ -449,11 +468,11 @@ public class TypeChecking implements Visitor<Object, Object> {
 		TypeKind r = (TypeKind) expr.ref.visit(this, null);
 		TypeKind i = (TypeKind) expr.ixExpr.visit(this, null);
 		if (!r.equals(TypeKind.ARRAY)) {
-			catchError("*** line " + expr.posn.line + ": (Type Checking) Cannot index a non-array");
-			expr.type = ((TypeDenoter) arg).typeKind;
+			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": (Type Checking) Cannot index a non-array");
+			// expr.type = ((TypeDenoter) arg).typeKind;
 		} else if (!i.equals(TypeKind.INT)) {
-			catchError("*** line " + expr.posn.line + ": (Type Checking) Index must be an integer");
-			expr.type = ((TypeDenoter) arg).typeKind;
+			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": (Type Checking) Index must be an integer");
+			// expr.type = ((TypeDenoter) arg).typeKind;
 		} else {
 			expr.type = ((ArrayType) expr.ref.decl.type).eltType.typeKind;
 		}
@@ -479,6 +498,14 @@ public class TypeChecking implements Visitor<Object, Object> {
 							if (!(((ClassType) expected).className.name.equals(((NewObjectExpr) expr.argList.get(i)).classtype.className.name))) {
 								catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
 							}
+						} else if (expr.argList.get(i) instanceof CallExpr) {
+							if (!((ClassType) expected).className.name.equals(((ClassType) ((CallExpr) expr.argList.get(i)).functionRef.decl.type).className.name)) {
+								catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+							}
+						} else if (expr.argList.get(i) instanceof IxExpr) {
+							if (!((ClassType) expected).className.name.equals(((ClassType) ((ArrayType) ((IxExpr) expr.argList.get(i)).ref.decl.type).eltType).className.name)) {
+								catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
+							}
 						} else {
 							if (!(((ClassType) expected).className.name.equals(((ClassType) ((RefExpr) expr.argList.get(i)).ref.decl.type).className.name))) {
 								catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched class types in method call arguments");
@@ -491,6 +518,8 @@ public class TypeChecking implements Visitor<Object, Object> {
 							rT = ((NewArrayExpr) expr.argList.get(i)).eltType;
 						} else if (expr.argList.get(i) instanceof CallExpr) {
 							rT = ((ArrayType) ((CallExpr) expr.argList.get(i)).functionRef.decl.type).eltType;
+						} else if (expr.argList.get(i) instanceof IxExpr) {
+							rT = ((ArrayType) ((IxExpr) expr.argList.get(i)).ref.decl.type).eltType;
 						} else {
 							rT = ((ArrayType) ((RefExpr) expr.argList.get(i)).ref.decl.type).eltType;
 						}
