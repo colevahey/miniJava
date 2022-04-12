@@ -375,29 +375,31 @@ public class Identification implements Visitor<Object, Object> {
 		boolean found = false;
 		if (((QualRef) arg).ref instanceof ThisRef) {
 			cd = currentClass;
-			accessPrivate = true;
 		} else if (((QualRef) arg).ref instanceof IdRef && ((QualRef) arg).ref.decl instanceof ClassDecl) {
 			cd = (ClassDecl) ((QualRef) arg).ref.decl;
 			isStatic = true;
 		} else {
 			cd = (ClassDecl) table.getClasses().get(((ClassType)((QualRef) arg).ref.decl.type).className.name);
 		}
+		if (cd.equals(currentClass)) {
+			accessPrivate = true;
+		}
 		FieldDeclList fdl = cd.fieldDeclList;
 		if (baseLevel) {
 			MethodDeclList mdl = cd.methodDeclList;
-			if (!isStatic && !accessPrivate) {
-				// Non static method that is public in another class
+			if (isStatic && !accessPrivate) {
+				// Static method that is public in another class
 				for (MethodDecl md : mdl) {
-					if (!md.isStatic && !md.isPrivate) { 
+					if (md.isStatic && !md.isPrivate) { 
 						if (id.name.equals(md.name)) {
 							found = true;
 						}
 					}
 				} 
 			} else if (!accessPrivate) {
-				// Static method of a different class
+				// Static or non-Static method of a different class
 				for (MethodDecl md : mdl) {
-					if (isStatic && !md.isPrivate) {
+					if (!md.isPrivate) {
 						if (id.name.equals(md.name)) {
 							found = true;
 						}
@@ -412,19 +414,19 @@ public class Identification implements Visitor<Object, Object> {
 				}
 			}
 		}
-		if (!isStatic && !accessPrivate) {
-			// Non static field that is public
+		if (isStatic && !accessPrivate) {
+			// Static field that is public
 			for (FieldDecl fd : fdl) {
-				if (!fd.isPrivate && !fd.isStatic) {
+				if (fd.isStatic && !fd.isPrivate) {
 					if (id.name.equals(fd.name)) { 
 						found = true;
 					}
 				}
 			}
 		} else if (!accessPrivate) {
-			// Static field of a different class
+			// Static or Non-Static field of a different class
 			for (FieldDecl fd : fdl) {
-				if (fd.isStatic && !fd.isPrivate) {
+				if (!fd.isPrivate) {
 					if (id.name.equals(fd.name)) { 
 						found = true;
 					}

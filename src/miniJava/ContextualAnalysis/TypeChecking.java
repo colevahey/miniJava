@@ -421,7 +421,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 			expr.type = TypeKind.INT;
 		} else {
 			if (!leftType.equals(rightType)) {
-				if (!rightType.equals(TypeKind.NULL) || leftType.equals(TypeKind.INT) || leftType.equals(TypeKind.BOOLEAN)) {
+				if ((!rightType.equals(TypeKind.NULL) && !leftType.equals(TypeKind.NULL)) || leftType.equals(TypeKind.INT) || leftType.equals(TypeKind.BOOLEAN)) {
 					catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched types in binary operation");
 				}
 				expr.type = TypeKind.BOOLEAN;
