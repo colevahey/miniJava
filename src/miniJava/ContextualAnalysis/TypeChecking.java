@@ -111,7 +111,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 	@Override
 	public Object visitVardeclStmt(VarDeclStmt stmt, Object arg) {
 		TypeKind vType = (TypeKind) stmt.varDecl.visit(this, null);
-		TypeKind eType = (TypeKind) stmt.initExp.visit(this, stmt.varDecl.type);
+		TypeKind eType = (TypeKind) stmt.initExp.visit(this, stmt.varDecl);
 		if (!vType.equals(eType)) {
 			if (!eType.equals(TypeKind.NULL) || vType.equals(TypeKind.INT) || vType.equals(TypeKind.BOOLEAN)) { 
 				catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched types in declaration");
@@ -364,9 +364,16 @@ public class TypeChecking implements Visitor<Object, Object> {
 				catchError("*** line " + stmt.posn.line + ": (Type Checking) Invalid conditional statement");
 			}
 		}
+		
 		stmt.thenStmt.visit(this, arg);
+		if (stmt.thenStmt instanceof VarDeclStmt) {
+			catchError("*** line " + stmt.thenStmt.posn.line + ": (Type Checking) Solitary variable declaration statement not permitted here");
+		}
 		if (stmt.elseStmt != null) {
 			stmt.elseStmt.visit(this, arg);
+			if (stmt.elseStmt instanceof VarDeclStmt) {
+				catchError("*** line " + stmt.elseStmt.posn.line + ": (Type Checking) Solitary variable declaration statement not permitted here");
+			}
 		}
 		return null;
 	}
@@ -378,13 +385,16 @@ public class TypeChecking implements Visitor<Object, Object> {
 			catchError("*** line " + stmt.posn.line + ": (Type Checking) Invalid conditional");
 		}
 		stmt.body.visit(this, arg);
+		if (stmt.body instanceof VarDeclStmt) {
+			catchError("*** line " + stmt.body.posn.line + ": (Type Checking) Solitary variable declaration statement not permitted here");
+		}
 		return null;
 	}
 
 	@Override
 	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
 		Operator uOp = (Operator) expr.operator.visit(this, null);
-		TypeKind e = (TypeKind) expr.expr.visit(this, null);
+		TypeKind e = (TypeKind) expr.expr.visit(this, arg);
 		if (uOp.name.equals("!")) {
 			if (e.equals(TypeKind.INT)) {
 				catchError("*** line " + expr.posn.line + ": (Type Checking) Boolean expression expected");
@@ -401,9 +411,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
-		TypeKind leftType = (TypeKind) expr.left.visit(this, null);
+		TypeKind leftType = (TypeKind) expr.left.visit(this, arg);
 		Operator bOp = (Operator) expr.operator.visit(this, null);
-		TypeKind rightType = (TypeKind) expr.right.visit(this, null);
+		TypeKind rightType = (TypeKind) expr.right.visit(this, arg);
 		if (bOp.name.equals("||") || bOp.name.equals("&&")) {
 			if (!leftType.equals(TypeKind.BOOLEAN) || !rightType.equals(TypeKind.BOOLEAN)) {
 				catchError("*** line " + expr.posn.line + ": (Type Checking) Boolean Expression Expected");
@@ -415,18 +425,40 @@ public class TypeChecking implements Visitor<Object, Object> {
 			}
 			expr.type = TypeKind.BOOLEAN;
 		} else if (!bOp.name.equals("==") && !bOp.name.equals("!=")) {
+			// +, -, *, /
 			if (!leftType.equals(TypeKind.INT) || !rightType.equals(TypeKind.INT)) {
 				catchError("*** line " + expr.posn.line + ": (Type Checking) Integer Expression Expected");
 			}
 			expr.type = TypeKind.INT;
 		} else {
+			// ==, !=
 			if (!leftType.equals(rightType)) {
 				if ((!rightType.equals(TypeKind.NULL) && !leftType.equals(TypeKind.NULL)) || leftType.equals(TypeKind.INT) || leftType.equals(TypeKind.BOOLEAN)) {
 					catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched types in binary operation");
 				}
 				expr.type = TypeKind.BOOLEAN;
 			} else if (leftType.equals(TypeKind.CLASS)) {
-				if (!((ClassType) ((RefExpr) expr.left).ref.decl.type).className.name.equals(((ClassType) ((RefExpr) expr.right).ref.decl.type).className.name)) {
+				ClassType leftClassType;
+				ClassType rightClassType;
+				if (expr.left instanceof NewObjectExpr) {
+					leftClassType = ((NewObjectExpr) expr.left).classtype;
+				} else if (expr.left instanceof CallExpr) {
+					leftClassType = (ClassType) ((CallExpr) expr.left).functionRef.decl.type;
+				} else if (expr.left instanceof IxExpr) {
+					leftClassType = (ClassType) ((ArrayType) ((IxExpr) expr.left).ref.decl.type).eltType;
+				} else {
+					leftClassType = (ClassType) ((RefExpr) expr.left).ref.decl.type;
+				}
+				if (expr.right instanceof NewObjectExpr) {
+					rightClassType = ((NewObjectExpr) expr.right).classtype;
+				} else if (expr.right instanceof CallExpr) {
+					rightClassType = (ClassType) ((CallExpr) expr.right).functionRef.decl.type;
+				} else if (expr.right instanceof IxExpr) {
+					rightClassType = (ClassType) ((ArrayType) ((IxExpr) expr.right).ref.decl.type).eltType;
+				} else {
+					rightClassType = (ClassType) ((RefExpr) expr.right).ref.decl.type;
+				}
+				if (!leftClassType.className.name.equals(rightClassType.className.name)) {
 					catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched class types in binary operation");
 				}
 				expr.type = TypeKind.BOOLEAN;
@@ -458,15 +490,15 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitRefExpr(RefExpr expr, Object arg) {
-		TypeKind r = (TypeKind) expr.ref.visit(this, null);
+		TypeKind r = (TypeKind) expr.ref.visit(this, arg);
 		expr.type = r;
 		return expr.type;
 	}
 
 	@Override
 	public Object visitIxExpr(IxExpr expr, Object arg) {
-		TypeKind r = (TypeKind) expr.ref.visit(this, null);
-		TypeKind i = (TypeKind) expr.ixExpr.visit(this, null);
+		TypeKind r = (TypeKind) expr.ref.visit(this, arg);
+		TypeKind i = (TypeKind) expr.ixExpr.visit(this, arg);
 		if (!r.equals(TypeKind.ARRAY)) {
 			throw new ContextualAnalysisException("*** line " + expr.posn.line + ": (Type Checking) Cannot index a non-array");
 			// expr.type = ((TypeDenoter) arg).typeKind;
@@ -481,7 +513,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitCallExpr(CallExpr expr, Object arg) {
-		expr.functionRef.visit(this, null);
+		expr.functionRef.visit(this, arg);
 		if (expr.argList.size() > ((MethodDecl) expr.functionRef.decl).parameterDeclList.size()) {
 			catchError("*** line " + expr.posn.line + ": (Type Checking) Too many arguments in method call");
 		} else if (expr.argList.size() < ((MethodDecl) expr.functionRef.decl).parameterDeclList.size()) {
@@ -489,7 +521,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 		} else {
 			for (int i = 0; i < expr.argList.size(); i++) {
 				TypeDenoter expected = ((MethodDecl) expr.functionRef.decl).parameterDeclList.get(i).type;
-				TypeKind t = (TypeKind) expr.argList.get(i).visit(this, null);
+				TypeKind t = (TypeKind) expr.argList.get(i).visit(this, arg);
 				if (!t.equals(expected.typeKind)) {
 					catchError("*** line " + expr.posn.line + ": (Type Checking) Mismatched argument types");
 				} else {
@@ -539,21 +571,21 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitLiteralExpr(LiteralExpr expr, Object arg) {
-		TypeKind e = (TypeKind) expr.lit.visit(this, null);
+		TypeKind e = (TypeKind) expr.lit.visit(this, arg);
 		return e;
 	}
 
 	@Override
 	public Object visitNewObjectExpr(NewObjectExpr expr, Object arg) {
-		TypeKind e = (TypeKind) expr.classtype.visit(this, null);
+		TypeKind e = (TypeKind) expr.classtype.visit(this, arg);
 		expr.type = e;
 		return expr.type;
 	}
 
 	@Override
 	public Object visitNewArrayExpr(NewArrayExpr expr, Object arg) {
-		expr.eltType.visit(this, null);
-		TypeKind s = (TypeKind) expr.sizeExpr.visit(this, null);
+		expr.eltType.visit(this, arg);
+		TypeKind s = (TypeKind) expr.sizeExpr.visit(this, arg);
 		if (!s.equals(TypeKind.INT)) {
 			catchError("*** line " + expr.posn.line + ": (Type Checking) Invalid array size");
 		}
@@ -573,6 +605,11 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitIdRef(IdRef ref, Object arg) {
+		if (arg instanceof VarDecl) {
+			if (((VarDecl) arg).name.equals(ref.id.name)) {
+				catchError("*** line " + ((VarDecl) arg).posn.line + ": (Type Checking) Cannot reference variable in its own definition");
+			}
+		}
 		return ref.decl.type.typeKind;
 	}
 

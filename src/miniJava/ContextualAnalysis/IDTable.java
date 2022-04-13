@@ -38,6 +38,14 @@ public class IDTable {
 		return table.get(0);
 	}
 	
+	public HashMap<String, Declaration> getLocals() {
+		HashMap<String, Declaration> hm = new HashMap<String, Declaration>();
+		for (int l = 2; l < level; l++) {
+			hm.putAll(table.get(l));
+		}
+		return hm;
+	}
+	
 	public HashMap<String, Declaration> getCurrentLevel() {
 		return table.get(level);
 	}

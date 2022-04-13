@@ -134,10 +134,11 @@ public class Identification implements Visitor<Object, Object> {
 
 	public Object visitVarDecl(VarDecl decl, Object arg) {
 		decl.type.visit(this, null);
-		if (table.getCurrentLevel().containsKey(decl.name)) {
+		if (table.getCurrentLevel().containsKey(decl.name) || table.getLocals().containsKey(decl.name)) {
 			throw new ContextualAnalysisException("*** line " + decl.posn.line + ": (Identification) Cannot redeclare variable in scope");
+		} else {
+			table.enter(decl.name, decl);
 		}
-		table.enter(decl.name, decl);
 		return null;
 	}
 
@@ -170,12 +171,22 @@ public class Identification implements Visitor<Object, Object> {
 	public Object visitVardeclStmt(VarDeclStmt stmt, Object arg) {
 		stmt.initExp.visit(this, null);
 		stmt.varDecl.visit(this, null);
+		if (stmt.initExp instanceof RefExpr) {
+			if (((RefExpr) stmt.initExp).ref.decl instanceof MethodDecl) {
+				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": (Identification) Cannot assign a method declaration to a field");
+			}
+		}
 		return null;
 	}
 
 	public Object visitAssignStmt(AssignStmt stmt, Object arg) {
 		stmt.ref.visit(this, null);
 		stmt.val.visit(this, null);
+		if (stmt.val instanceof RefExpr) {
+			if (((RefExpr) stmt.val).ref.decl instanceof MethodDecl) {
+				throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": (Identification) Cannot assign a method declaration to a field");
+			}
+		}
 		return null;
 	}
 
@@ -395,9 +406,9 @@ public class Identification implements Visitor<Object, Object> {
 							found = true;
 						}
 					}
-				} 
-			} else if (!accessPrivate) {
-				// Static or non-Static method of a different class
+				}
+			} else if (!isStatic && !accessPrivate) {
+				// Non-Static method of a different class
 				for (MethodDecl md : mdl) {
 					if (!md.isPrivate) {
 						if (id.name.equals(md.name)) {
@@ -405,8 +416,17 @@ public class Identification implements Visitor<Object, Object> {
 						}
 					}
 				}
+			} else if (isStatic && accessPrivate) {
+				// Static method of this class
+				for (MethodDecl md : mdl) {
+					if (md.isStatic) {
+						if (id.name.equals(md.name)) {
+							found = true;
+						}
+					}
+				}
 			} else {
-				// Method in this class static or non-static
+				// Non-static method in this class
 				for (MethodDecl md : mdl) {
 					if (id.name.equals(md.name)) {
 						found = true;
@@ -423,7 +443,7 @@ public class Identification implements Visitor<Object, Object> {
 					}
 				}
 			}
-		} else if (!accessPrivate) {
+		} else if (!isStatic && !accessPrivate) {
 			// Static or Non-Static field of a different class
 			for (FieldDecl fd : fdl) {
 				if (!fd.isPrivate) {
@@ -432,8 +452,17 @@ public class Identification implements Visitor<Object, Object> {
 					}
 				}
 			}
+		} else if (isStatic && accessPrivate) {
+			// Static field of this class
+			for (FieldDecl fd : fdl) {
+				if (fd.isStatic) {
+					if (id.name.equals(fd.name)) {
+						found = true;
+					}
+				}
+			}
 		} else {
-			// Field in this class (private and static/non-static access)
+			// Non-static field in this class
 			for (FieldDecl fd : fdl) {
 				if (id.name.equals(fd.name)) {
 					found = true;

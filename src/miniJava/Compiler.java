@@ -4,7 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
-import miniJava.AbstractSyntaxTrees.ASTDisplay;
+// import miniJava.AbstractSyntaxTrees.ASTDisplay;
 import miniJava.ContextualAnalysis.ContextualAnalysisException;
 import miniJava.ContextualAnalysis.Identification;
 import miniJava.SyntacticAnalyzer.Parser;
@@ -42,3 +42,50 @@ public class Compiler {
 		}
 	}
 }
+
+/* -------------------- TESTING ---------------------------
+
+package miniJava;
+
+import miniJava.AbstractSyntaxTrees.Package;
+import miniJava.ContextualAnalysis.ContextualAnalysisException;
+import miniJava.ContextualAnalysis.Identification;
+import miniJava.ContextualAnalysis.TypeChecking;
+import miniJava.SyntacticAnalyzer.Parser;
+import miniJava.SyntacticAnalyzer.Scanner;
+
+import java.io.*;
+
+public class Compiler {
+	public static <InputReader> void main(String[] args) throws SyntaxError, FileNotFoundException {
+		File folder = new File("/Users/colev/testing/pa3_tests");
+		File[] listOfFiles = folder.listFiles();
+		int numFiles = 0;
+		int countFails = 0;
+		int countPasses = 0;
+		int countErrors = 0;
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isFile()) {
+				if (listOfFiles[i].getName().indexOf("fail") == 0) {
+					System.out.println("(" + (++numFiles) + ") + Testing: " + listOfFiles[i].getName());
+					Package ast = new Parser(new Scanner(new FileInputStream(listOfFiles[i]))).parse();
+					try {
+						new Identification(ast);
+						new TypeChecking(ast);
+						countPasses++;
+					} catch (ContextualAnalysisException e) {
+						countFails++;
+						e.status();
+					} catch (Exception e) {
+						countErrors++;
+						// e.printStackTrace();
+					}
+				}
+			}
+		}
+		System.out.println("\nPASSES: " + countPasses);
+		System.out.println("FAILS: " + countFails);
+		System.out.println("ERRORS: " + countErrors);
+	}
+}
+*/
