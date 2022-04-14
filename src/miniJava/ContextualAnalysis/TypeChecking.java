@@ -615,6 +615,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitQRef(QualRef ref, Object arg) {
+		if (ref.id.name.equals("length")) {
+			return TypeKind.INT;
+		}
 		return ref.decl.type.typeKind;
 	}
 

@@ -344,6 +344,12 @@ public class Identification implements Visitor<Object, Object> {
 		if ((ref.ref instanceof IdRef || ref.ref instanceof ThisRef) && ref.ref.decl instanceof ClassDecl) {
 			outerFdl = ((ClassDecl) ref.ref.decl).fieldDeclList;
 		} else {
+			if (ref.ref.decl.type instanceof ArrayType) {
+				if (!ref.id.name.equals("length")) {
+					throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Cannot dereference variable " + ref.ref.decl.name);
+				}
+				return null;
+			}
 			if (!(ref.ref.decl.type instanceof ClassType)) {
 				throw new ContextualAnalysisException("*** line " + ref.posn.line + ": (Identification) Cannot dereference variable " + ref.ref.decl.name);
 			}

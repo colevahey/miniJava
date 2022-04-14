@@ -23,7 +23,7 @@ public class Compiler {
 		
 		Scanner scanner = new Scanner(inputStream);
 		Parser parser = new Parser(scanner);
-		System.out.println("Syntactic Analysis ... ");
+		System.out.println("Analyzing ... ");
 		try {
 			Package parsed = parser.parse();
 			new Identification(parsed);
