@@ -37,7 +37,7 @@ public class Compiler {
 			System.exit(4);
 		} catch (ContextualAnalysisException e) {
 			e.status();
-			e.printStackTrace();
+			// e.printStackTrace();
 			System.exit(4);
 		}
 	}

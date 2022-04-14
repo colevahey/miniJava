@@ -163,7 +163,12 @@ public class TypeChecking implements Visitor<Object, Object> {
 	@Override
 	public Object visitAssignStmt(AssignStmt stmt, Object arg) {
 		TypeKind vType = (TypeKind) stmt.ref.visit(this, null);
-		TypeKind eType = (TypeKind) stmt.val.visit(this, stmt.ref.decl.type);
+		TypeKind eType = null;
+		if (stmt.ref.decl != null) {
+			eType = (TypeKind) stmt.val.visit(this, stmt.ref.decl.type);
+		} else {
+			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": (Type Checking) Cannot assign a read-only attribute");
+		}
 		if (!vType.equals(eType)) {
 			if (!eType.equals(TypeKind.NULL) || vType.equals(TypeKind.INT) || vType.equals(TypeKind.BOOLEAN)) { 
 				catchError("*** line " + stmt.posn.line + ": (Type Checking) Mismatched types in assignment");
