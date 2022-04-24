@@ -476,10 +476,6 @@ public class Interpreter {
 				break;
 			index = data[ST - 2];
 			if (data[addr - 2] != -2 || index < 0 || index >= data[addr - 1]) {
-				System.out.println(addr);
-				System.out.println(data[addr - 2]);
-				System.out.println(index);
-				System.out.println(data[addr - 1]);
 				status = failedArrayIndex;
 				break;
 			}
