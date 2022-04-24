@@ -11,12 +11,14 @@ public class Identification implements Visitor<Object, Object> {
 	private ClassDecl currentClass;
 	private boolean currentStatic;
 	private boolean baseLevel;
+	private boolean mainDeclared;
 	
 	public Identification(Package ast) {
 		table = new IDTable();
 		this.ast = ast;
 		this.currentStatic = false;
 		this.baseLevel = false;
+		this.mainDeclared = false;
 		this.ast.visit(this, null);
 		new TypeChecking(this.ast);
 	}
@@ -68,6 +70,9 @@ public class Identification implements Visitor<Object, Object> {
 			currentClass = cd;
 			cd.visit(this, null);
 		}
+		if (!mainDeclared) {
+			throw new ContextualAnalysisException("*** line " + prog.posn.line + ": (Identification) Main method never declared");
+		}	
 		table.closeScope();
 		return null;
 	}
@@ -94,6 +99,22 @@ public class Identification implements Visitor<Object, Object> {
 		for (MethodDecl md: cd.methodDeclList) {
 			currentStatic = md.isStatic;
 			md.visit(this, null);
+			if (md.name.equals("main")) {
+				if (!md.isPrivate && md.isStatic && md.type.typeKind.equals(TypeKind.VOID) && md.parameterDeclList.size() == 1) {
+					if (md.parameterDeclList.get(0).type instanceof ArrayType) {
+						if (((ArrayType) md.parameterDeclList.get(0).type).eltType instanceof ClassType) {
+							if ((((ClassType) ((ArrayType) md.parameterDeclList.get(0).type).eltType)).className.name.equals("String")) {
+								if (!mainDeclared) {
+									mainDeclared = true;
+									md.isMain = true;
+								} else {
+									throw new ContextualAnalysisException("*** line " + md.posn.line + ": (Identification) Main method has already been declared");
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		table.closeScope();
 		
@@ -389,7 +410,6 @@ public class Identification implements Visitor<Object, Object> {
 		ClassDecl cd;
 		boolean accessPrivate = false;
 		boolean isStatic = false;
-		boolean found = false;
 		if (((QualRef) arg).ref instanceof ThisRef) {
 			cd = currentClass;
 		} else if (((QualRef) arg).ref instanceof IdRef && ((QualRef) arg).ref.decl instanceof ClassDecl) {
@@ -409,7 +429,7 @@ public class Identification implements Visitor<Object, Object> {
 				for (MethodDecl md : mdl) {
 					if (md.isStatic && !md.isPrivate) { 
 						if (id.name.equals(md.name)) {
-							found = true;
+							id.decl = md;
 						}
 					}
 				}
@@ -418,7 +438,7 @@ public class Identification implements Visitor<Object, Object> {
 				for (MethodDecl md : mdl) {
 					if (!md.isPrivate) {
 						if (id.name.equals(md.name)) {
-							found = true;
+							id.decl = md;
 						}
 					}
 				}
@@ -427,7 +447,7 @@ public class Identification implements Visitor<Object, Object> {
 				for (MethodDecl md : mdl) {
 					if (md.isStatic) {
 						if (id.name.equals(md.name)) {
-							found = true;
+							id.decl = md;
 						}
 					}
 				}
@@ -435,7 +455,7 @@ public class Identification implements Visitor<Object, Object> {
 				// Non-static method in this class
 				for (MethodDecl md : mdl) {
 					if (id.name.equals(md.name)) {
-						found = true;
+						id.decl = md;
 					}
 				}
 			}
@@ -445,7 +465,7 @@ public class Identification implements Visitor<Object, Object> {
 			for (FieldDecl fd : fdl) {
 				if (fd.isStatic && !fd.isPrivate) {
 					if (id.name.equals(fd.name)) { 
-						found = true;
+						id.decl = fd;
 					}
 				}
 			}
@@ -454,7 +474,7 @@ public class Identification implements Visitor<Object, Object> {
 			for (FieldDecl fd : fdl) {
 				if (!fd.isPrivate) {
 					if (id.name.equals(fd.name)) { 
-						found = true;
+						id.decl = fd;
 					}
 				}
 			}
@@ -463,7 +483,7 @@ public class Identification implements Visitor<Object, Object> {
 			for (FieldDecl fd : fdl) {
 				if (fd.isStatic) {
 					if (id.name.equals(fd.name)) {
-						found = true;
+						id.decl = fd;
 					}
 				}
 			}
@@ -471,11 +491,11 @@ public class Identification implements Visitor<Object, Object> {
 			// Non-static field in this class
 			for (FieldDecl fd : fdl) {
 				if (id.name.equals(fd.name)) {
-					found = true;
+					id.decl = fd;
 				}
 			}
 		}
-		if (!found) {
+		if (id.decl == null) {
 			throw new ContextualAnalysisException("*** line " + id.posn.line + ": (Identification) Method or field not found in scope");
 		}
 		return null;

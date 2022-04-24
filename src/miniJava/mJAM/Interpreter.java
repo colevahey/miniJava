@@ -476,6 +476,10 @@ public class Interpreter {
 				break;
 			index = data[ST - 2];
 			if (data[addr - 2] != -2 || index < 0 || index >= data[addr - 1]) {
+				System.out.println(addr);
+				System.out.println(data[addr - 2]);
+				System.out.println(index);
+				System.out.println(data[addr - 1]);
 				status = failedArrayIndex;
 				break;
 			}
@@ -751,7 +755,6 @@ public class Interpreter {
 
 	static void debugProgram() {
 		initMachine();
-
 		BufferedReader inputReader = new BufferedReader(new InputStreamReader(
 				System.in));
 
@@ -861,7 +864,6 @@ public class Interpreter {
 	}
 
 	public static void interpret(String objectFileName) {
-
 		ObjectFile objectFile = new ObjectFile(objectFileName);
 		if (objectFile.read()) {
 			System.out.println("Unable to load object file " + objectFileName);
@@ -900,7 +902,6 @@ public class Interpreter {
 			System.out.println("Unable to load source file " + sourceFileName);
 			return;
 		}
-
 		debugProgram();
 	}
 }

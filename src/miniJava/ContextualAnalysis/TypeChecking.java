@@ -59,7 +59,9 @@ public class TypeChecking implements Visitor<Object, Object> {
 			}
 		}
 		if (ret != null) {
-			if (!(md.statementList.get(md.statementList.size() - 1) instanceof ReturnStmt)) {
+			if (md.statementList.size() == 0) {
+				catchError("*** line " + md.posn.line + ": (Type Checking) Missing return statement of type " + ret);
+			} else if (!(md.statementList.get(md.statementList.size() - 1) instanceof ReturnStmt)) {
 				catchError("*** line " + md.posn.line + ": (Type Checking) Missing final return statement of type " + ret);
 			} else if (!returned) {
 				catchError("*** line " + md.posn.line + ": (Type Checking) Return statement expected for this method");
@@ -620,7 +622,7 @@ public class TypeChecking implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitQRef(QualRef ref, Object arg) {
-		if (ref.id.name.equals("length")) {
+		if (ref.id.name.equals("length") && ref.ref.decl.type.typeKind.equals(TypeKind.ARRAY)) {
 			return TypeKind.INT;
 		}
 		return ref.decl.type.typeKind;
