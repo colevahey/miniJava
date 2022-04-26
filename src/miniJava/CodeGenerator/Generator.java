@@ -201,9 +201,11 @@ public class Generator implements Visitor<Object, Object> {
 			if (mR.id.decl.name.equals("println") && mR.ref instanceof QualRef) {
 				mR = (QualRef) mR.ref;
 				if (mR.id.decl.name.equals("out") && mR.ref instanceof IdRef) {
-					if (((IdRef) mR.ref).id.decl.name.equals("System")) {
-						Machine.emit(Prim.putintnl);
-						return null;
+					if (mR.ref.decl instanceof ClassDecl) {
+						if (((ClassDecl) mR.ref.decl).name.equals("System")) {
+							Machine.emit(Prim.putintnl);
+							return null;
+						}
 					}
 				}
 			}
@@ -296,14 +298,39 @@ public class Generator implements Visitor<Object, Object> {
 
 	@Override
 	public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
-		expr.left.visit(this, null);
-		expr.right.visit(this, null);
 		Operator bOp = expr.operator;
+		expr.left.visit(this, null);
 		if (bOp.name.equals("||")) {
+			int jRight = Machine.nextInstrAddr();
+			Machine.emit(Op.JUMPIF, 1, Reg.CB, 0);       // Skip right visit if true || ..., patch later
+			expr.left.visit(this, null);
+			expr.right.visit(this, null);
 			Machine.emit(Prim.or);
+			int normalRight = Machine.nextInstrAddr();
+			Machine.emit(Op.JUMP, Reg.CB, 0);
+			int afterRight = Machine.nextInstrAddr();
+			Machine.patch(jRight, afterRight);
+			Machine.emit(Op.LOADL, 1);					// Put true back on the stack since it was consumed for JUMPIF
+			int afterDone = Machine.nextInstrAddr();
+			Machine.patch(normalRight, afterDone);
+			return null;
 		} else if (bOp.name.equals("&&")) {
-			Machine.emit(Prim.and);
-		} else if (bOp.name.equals(">")) {
+			int jRight = Machine.nextInstrAddr();
+			Machine.emit(Op.JUMPIF, 0, Reg.CB, 0);       // Skip right visit if false && ..., patch later
+			expr.left.visit(this, null);
+			expr.right.visit(this, null);
+			Machine.emit(Prim.or);
+			int normalRight = Machine.nextInstrAddr();
+			Machine.emit(Op.JUMP, Reg.CB, 0);
+			int afterRight = Machine.nextInstrAddr();
+			Machine.patch(jRight, afterRight);
+			Machine.emit(Op.LOADL, 0);					// Put false back on the stack since it was consumed for JUMPIF
+			int afterDone = Machine.nextInstrAddr();
+			Machine.patch(normalRight, afterDone);
+			return null;
+		}
+		expr.right.visit(this, null);
+		if (bOp.name.equals(">")) {
 			Machine.emit(Prim.gt);
 		} else if (bOp.name.equals("<")) {
 			Machine.emit(Prim.lt);

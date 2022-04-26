@@ -323,13 +323,8 @@ public class Identification implements Visitor<Object, Object> {
 
 	public Object visitIdRef(IdRef ref, Object arg) {
 		if (arg != null) {
-			if (table.getClasses().containsKey(ref.id.name)) {
-				ref.decl = table.getClasses().get(ref.id.name);
-				ref.id.decl = table.getClasses().get(ref.id.name);
-			} else {
-				ref.decl = table.retrieve(ref.id.name);
-				ref.id.decl = table.retrieve(ref.id.name);
-			}
+			ref.decl = table.retrieve(ref.id.name);
+			ref.id.decl = table.retrieve(ref.id.name);
 		} else {
 			Declaration decl = table.retrieve(ref.id.name);
 			if (decl instanceof MemberDecl) {

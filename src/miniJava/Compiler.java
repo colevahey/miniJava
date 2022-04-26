@@ -59,8 +59,8 @@ public class Compiler {
 	        System.out.println("Running Code");
 	        Interpreter.interpret(objectCodeFileName);
 	        
-	        /*System.out.println("Running code in debugger ... ");
-	        Interpreter.debug(objectCodeFileName, asmCodeFileName);*/
+	        // System.out.println("Running code in debugger ... ");
+	        // Interpreter.debug(objectCodeFileName, asmCodeFileName);
 	        
 			System.exit(0);
 		} catch (SyntaxError e) {
