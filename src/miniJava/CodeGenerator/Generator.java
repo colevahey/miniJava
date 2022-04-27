@@ -302,12 +302,12 @@ public class Generator implements Visitor<Object, Object> {
 		expr.left.visit(this, null);
 		if (bOp.name.equals("||")) {
 			int jRight = Machine.nextInstrAddr();
-			Machine.emit(Op.JUMPIF, 1, Reg.CB, 0);       // Skip right visit if true || ..., patch later
-			expr.left.visit(this, null);
-			expr.right.visit(this, null);
-			Machine.emit(Prim.or);
+			Machine.emit(Op.JUMPIF, 1, Reg.CB, 0);      // Skip right visit if true || ..., patch later
+			Machine.emit(Op.LOADL, 0);					// Put 0 back on stack since it was consumed
+			expr.right.visit(this, null);				// Visit right
+			Machine.emit(Prim.or);						// Call or
 			int normalRight = Machine.nextInstrAddr();
-			Machine.emit(Op.JUMP, Reg.CB, 0);
+			Machine.emit(Op.JUMP, Reg.CB, 0);			// Jump to end
 			int afterRight = Machine.nextInstrAddr();
 			Machine.patch(jRight, afterRight);
 			Machine.emit(Op.LOADL, 1);					// Put true back on the stack since it was consumed for JUMPIF
@@ -317,7 +317,7 @@ public class Generator implements Visitor<Object, Object> {
 		} else if (bOp.name.equals("&&")) {
 			int jRight = Machine.nextInstrAddr();
 			Machine.emit(Op.JUMPIF, 0, Reg.CB, 0);       // Skip right visit if false && ..., patch later
-			expr.left.visit(this, null);
+			Machine.emit(Op.LOADL, 1);
 			expr.right.visit(this, null);
 			Machine.emit(Prim.or);
 			int normalRight = Machine.nextInstrAddr();
