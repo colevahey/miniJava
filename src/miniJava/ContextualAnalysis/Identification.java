@@ -257,6 +257,21 @@ public class Identification implements Visitor<Object, Object> {
 		return null;
 	}
 	
+	public Object visitForStmt(ForStmt stmt, Object arg) {
+		table.openScope();
+		if (stmt.init != null && !(stmt.init instanceof VarDeclStmt || stmt.init instanceof AssignStmt)) {
+			throw new ContextualAnalysisException("*** line " + stmt.posn.line + ": (Identification) Must be a var decl statement or assign statement");
+		}
+		if (stmt.init != null) stmt.init.visit(this, null);
+		if (stmt.cond != null) stmt.cond.visit(this, null);
+		if (stmt.assignment != null) stmt.assignment.visit(this, null);
+		for (Statement s : stmt.body.sl) {
+			s.visit(this, null);
+		}
+		table.closeScope();
+		return null;
+	}
+	
 	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
 		expr.operator.visit(this, null);
 		expr.expr.visit(this, null);

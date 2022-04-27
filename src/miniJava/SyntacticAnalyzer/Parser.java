@@ -387,6 +387,32 @@ public class Parser {
 			accept(TokenType.RPAREN);				// )
 			s = parseStatement();					// Statement
 			return new WhileStmt(e, s, start);
+		case FOR:
+			autoAccept();							// for
+			accept(TokenType.LPAREN);				// (
+			Statement s1 = null;
+			if (currentToken.tokenType.equals(TokenType.SEMICOLON)) {
+				accept(TokenType.SEMICOLON);
+			} else {
+				s1 = parseStatement();
+			}
+			e = currentToken.tokenType.equals(TokenType.SEMICOLON) ? null : parseExpression();
+			accept(TokenType.SEMICOLON);			// ;
+			AssignStmt a = null;
+			if (!currentToken.tokenType.equals(TokenType.RPAREN)) {
+				r = parseReference();
+				accept(TokenType.ASSIGNMENT);
+				Expression e2 = parseExpression();
+				a = new AssignStmt(r, e2, start);
+			}
+			accept(TokenType.RPAREN);				// )
+			accept(TokenType.LCBRACKET);			// {
+			sl = new StatementList();
+			while (!currentToken.tokenType.equals(TokenType.RCBRACKET)) {
+				sl.add(parseStatement());		// Statement*
+			}
+			autoAccept();						// }
+			return new ForStmt(s1, e, a, new BlockStmt(sl, new SourcePosition(0,0)), start);
 		default:
 			throw new SyntaxError("Syntax Error");
 		}

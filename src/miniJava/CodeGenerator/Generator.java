@@ -288,6 +288,50 @@ public class Generator implements Visitor<Object, Object> {
 		Machine.emit(Op.JUMPIF, 1, Reg.CB, bodyStart);	// Jump back to body start if conditional
 		return null;
 	}
+	
+	// EXTRA CREDIT FOR LOOPS
+	public Object visitForStmt(ForStmt stmt, Object arg) {
+		// Do init statement
+		boolean decl = false;
+		
+		if (stmt.init != null) {
+			if (stmt.init instanceof VarDeclStmt) {
+				decl = true;
+				stmt.init.visit(this, arg);
+			} else {
+				stmt.init.visit(this, null);
+			}
+		}
+		
+		// Jump to conditional
+		int jConditional = Machine.nextInstrAddr();
+		Machine.emit(Op.JUMP, Reg.CB, 0);
+		
+		// Run body
+		int bodyStart = Machine.nextInstrAddr();
+		stmt.body.visit(this, arg);
+		
+		// Visit assignment
+		if (stmt.assignment != null) stmt.assignment.visit(this, null);
+		
+		// Run conditional
+		int conditionalStart = Machine.nextInstrAddr();
+		Machine.patch(jConditional, conditionalStart);
+		if (stmt.cond != null) {
+			stmt.cond.visit(this, null);
+		} else {
+			Machine.emit(Op.LOADL, 1);
+		}
+		
+		// Jump back to body start if conditional
+		Machine.emit(Op.JUMPIF, 1, Reg.CB, bodyStart);
+		
+		if (decl) {
+			Machine.emit(Op.POP, 1);
+		}
+		
+		return null;
+	}
 
 	@Override
 	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {

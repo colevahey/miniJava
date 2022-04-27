@@ -397,6 +397,22 @@ public class TypeChecking implements Visitor<Object, Object> {
 		}
 		return null;
 	}
+	
+	public Object visitForStmt(ForStmt stmt, Object arg) {
+		if (stmt.init != null) stmt.init.visit(this, null);
+		if (stmt.cond != null) {
+			TypeKind eType = (TypeKind) stmt.cond.visit(this, new BaseType(TypeKind.BOOLEAN, null));
+			if (!eType.equals(TypeKind.BOOLEAN)) {
+				catchError("*** line " + stmt.posn.line + ": (Type Checking) Invalid conditional");
+			}
+		}
+		if (stmt.assignment != null) stmt.assignment.visit(this, null);
+		stmt.body.visit(this, arg);
+		if (stmt.body.sl.size() == 1 && stmt.body.sl.get(0) instanceof VarDeclStmt) {
+			catchError("*** line " + stmt.body.sl.get(0).posn.line + ": (Type Checking) Solitary variable declaration statement not permitted here");
+		}
+		return null;
+	}
 
 	@Override
 	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
