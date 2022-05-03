@@ -246,9 +246,6 @@ public class Generator implements Visitor<Object, Object> {
 			// Method returns a value, put it on the stack
 			stmt.returnExpr.visit(this, null);
 			Machine.emit(Op.RETURN, 1, 0, ((MethodDecl) arg).parameterDeclList.size());
-		} else {
-			// Method should just return without putting a value on the stack
-			Machine.emit(Op.RETURN, 0, 0, ((MethodDecl) arg).parameterDeclList.size());
 		}
 		return null;
 	}
