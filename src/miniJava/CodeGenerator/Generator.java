@@ -87,12 +87,14 @@ public class Generator implements Visitor<Object, Object> {
 			param--;
 		}
 		
+		boolean foundReturn = false;
 		for (Statement st: md.statementList) {
 			st.visit(this, md);
+			if (st instanceof ReturnStmt) foundReturn = true;
 		}
 		
-		if (md.type.typeKind.equals(TypeKind.VOID)) {
-			visitReturnStmt(new ReturnStmt(null, null), md);
+		if (md.type.typeKind.equals(TypeKind.VOID) && foundReturn == false) {
+			Machine.emit(Op.RETURN, 0, 0, md.parameterDeclList.size());
 		}
 		return null;
 	}
@@ -246,6 +248,8 @@ public class Generator implements Visitor<Object, Object> {
 			// Method returns a value, put it on the stack
 			stmt.returnExpr.visit(this, null);
 			Machine.emit(Op.RETURN, 1, 0, ((MethodDecl) arg).parameterDeclList.size());
+		} else {
+			Machine.emit(Op.RETURN, 0, 0, ((MethodDecl) arg).parameterDeclList.size());
 		}
 		return null;
 	}
