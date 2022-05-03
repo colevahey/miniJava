@@ -91,7 +91,7 @@ public class Generator implements Visitor<Object, Object> {
 			st.visit(this, md);
 		}
 		
-		if (md.type.typeKind.equals(TypeKind.VOID) && !(md.statementList.get(md.statementList.size() - 1) instanceof ReturnStmt)) {
+		if (md.type.typeKind.equals(TypeKind.VOID)) {
 			visitReturnStmt(new ReturnStmt(null, null), md);
 		}
 		return null;
@@ -363,7 +363,7 @@ public class Generator implements Visitor<Object, Object> {
 			Machine.emit(Op.JUMPIF, 0, Reg.CB, 0);       // Skip right visit if false && ..., patch later
 			Machine.emit(Op.LOADL, 1);
 			expr.right.visit(this, null);
-			Machine.emit(Prim.or);
+			Machine.emit(Prim.and);
 			int normalRight = Machine.nextInstrAddr();
 			Machine.emit(Op.JUMP, Reg.CB, 0);
 			int afterRight = Machine.nextInstrAddr();

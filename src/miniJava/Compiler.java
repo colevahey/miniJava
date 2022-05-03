@@ -37,7 +37,8 @@ public class Compiler {
 			System.out.println("Valid miniJava Program");
 			
 			new Generator(parsed);
-			String objectCodeFileName = args[0].replace(".java", ".mJAM");
+			// String objectCodeFileName = args[0].replace(".java", ".mJAM");
+			String objectCodeFileName = "out.mJAM";
 			ObjectFile objF = new ObjectFile(objectCodeFileName);
 			System.out.print("Writing object code file " + objectCodeFileName + " ... ");
 			if (objF.write()) {

@@ -1,0 +1,28 @@
+SCOPE:
+I fully implemented the miniJava compiler and added an extension by implementing for loops.
+This implementation follows the grammar:
+
+for ( init? ; conditional? ; assignment? ) {
+  Statement*
+}
+
+All three of the arguments of the for loop are optional, and the init must be either a VarDeclStmt or an AssignmentStmt. The conditional must be a valid boolean expression, and the assignment must be an AssignmentStmt. The for loop runs the init statement, then checks the conditional, runs the statements contained in the for loop body, and then runs the optional assignment before going through the conditional, body, assignment loop again. Any variable initialized in the init part of the loop can be used in the scope of the body of the loop, but is erased when the for loop completes.
+
+SUMMARY OF CHANGES TO AST CLASSES:
+For the basic miniJava, I added a NullLiteral AST class which served to represent the null literal token. I also added a NULL type to the TypeKind enum to be able to scan and parse this character. In Visitor I then added a visitNullLiteral method so that all classes that implement Visitor would utilize this method. In ASTDisplay I added a visitNullLiteral method to accomodate this change. In MethodDecl, I added an isMain flag so that when I found the main method in identification, I could easily find it in code generation. In Declaration, I added a RuntimeEntity field called address which I initially set to null. This would hold information about the declaration that I used in code generation. In Identifier, I added a decl field to track declarations from identifiers I found in identification. In Reference, I added a decl field to track declarations from references I found in identification.
+
+In order to implement for loops, I added a ForStmt AST class which extends Statement and holds an initialization Statement, conditional Expression, assignment AssignStmt, and body BlockStmt as well as a SourcePosition. I then added a visitForStmt method to the Visitor class in order to visit ForStmt whenever I implemented the Visitor class. I added the FOR token to TypeKind, and then had to handle it in scanning and parsing. Then in Type Checking, I checked that the ForStmt was valid for the grammar laid out. In code generation, I modeled the visitForStmt after visitWhileStmt with some additions for a possible VarDecl in the initialization and the assignment part of the ForStmt.
+
+TEST DESCRIPTIONS:
+All of the tests in PA4Test.java pass, but I have included a number of tests for the for loop extension of miniJava. These include:
+pass100.java - Basic for loop in main method
+pass101.java - For loop using variable declared in loop declaration
+pass102.java - For loop using variable declared outside of loop in conditional
+pass103.java - For loop with only a conditional in declaration
+pass104.java - For loop with variable in relation to references as opposed to integers
+pass104.java - For loop with all empty arguments to run as infinite loop
+fail100.java - Empty for loop decl fails parsing
+fail101.java - One semicolon in for loop fails parsing
+fail102.java - For loop with if statement in loop decl instead of VarDeclStmt or AssignStmt
+fail103.java - For loop with VarDecl in assign part of loop decl
+fail104.java - Invalid expression in conditional of for loop
